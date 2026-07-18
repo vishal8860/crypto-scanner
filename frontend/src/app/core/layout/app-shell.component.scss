@@ -1,6 +1,16 @@
+mat-sidenav-container {
+  min-height: 100vh;
+}
+
 mat-sidenav {
   width: 240px;
   padding: 16px;
+  box-sizing: border-box;
+  overflow: auto;
+}
+
+mat-sidenav-content {
+  min-height: 100vh;
 }
 
 main {
