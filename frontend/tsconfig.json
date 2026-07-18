@@ -1,0 +1,4 @@
+{
+  "compilerOptions": { "strict": true, "noImplicitOverride": true, "noPropertyAccessFromIndexSignature": true, "noImplicitReturns": true, "noFallthroughCasesInSwitch": true, "forceConsistentCasingInFileNames": true, "target": "ES2022", "module": "preserve", "moduleResolution": "bundler", "useDefineForClassFields": false, "experimentalDecorators": true, "skipLibCheck": true },
+  "angularCompilerOptions": { "strictTemplates": true, "strictInjectionParameters": true, "strictInputAccessModifiers": true, "strictLiteralTypes": true }
+}

@@ -1,0 +1,19 @@
+<mat-sidenav-container>
+  <mat-sidenav [opened]="navigationOpen()" mode="side">
+    <h2>Vishal Scanner</h2>
+    <mat-nav-list>
+      @for (item of navigation; track item.path) {
+        <a mat-list-item [routerLink]="item.path" routerLinkActive="active">{{ item.label }}</a>
+      }
+    </mat-nav-list>
+  </mat-sidenav>
+
+  <mat-sidenav-content>
+    <mat-toolbar>
+      <span>Vishal Scanner</span>
+    </mat-toolbar>
+    <main>
+      <router-outlet />
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>
