@@ -23,6 +23,7 @@ export const environment = Object.freeze({
 	nodeEnv: required('NODE_ENV', 'development'),
 	corsAllowedOrigins: csv('CORS_ALLOWED_ORIGINS', 'http://localhost:4200'),
 	coinDcxApiBaseUrl: required('COINDCX_API_BASE_URL', 'https://api.coindcx.com'),
+	coinDcxPublicApiBaseUrl: required('COINDCX_PUBLIC_API_BASE_URL', 'https://public.coindcx.com'),
 	coinDcxApiTimeoutMs: positiveInteger('COINDCX_API_TIMEOUT_MS', '10000'),
 	coinDcxApiRetries: positiveInteger('COINDCX_API_RETRIES', '3'),
 	sqliteDatabasePath: required('SQLITE_DATABASE_PATH', './data/vishal-scanner.sqlite'),

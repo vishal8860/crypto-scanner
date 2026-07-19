@@ -169,3 +169,104 @@ CoinDCX futures metadata and ticker data come from separate endpoints; merging b
 ## Version
 
 v0.2.0
+
+---
+
+# Day 3
+
+**Date**  
+19 July 2026
+
+## Objective
+
+Build a reusable Market Data Engine for OHLC candle ingestion and normalization.
+
+---
+
+## Completed
+
+✅ New backend `candles` module created with feature-first structure:
+
+- `controller/`
+- `service/`
+- `dto/`
+- `interfaces/`
+- `types/`
+- `constants/`
+
+✅ Endpoint implemented: `GET /api/candles` and `GET /api/v1/candles`
+
+✅ Query validation added for `symbol`, `interval`, and `limit`
+
+✅ Dedicated CoinDCX candle service implemented with:
+
+- reusable Axios client
+- timeout
+- retry support
+- error handling
+- logging
+
+✅ CoinDCX response normalized to internal `Candle` contract
+
+✅ Service architecture designed for future caching integration via provider abstraction
+
+✅ Frontend `CandlesService` + typed interfaces added
+
+✅ Scanner row click integration completed
+
+✅ Temporary candle debug panel implemented (no chart)
+
+✅ Required verification completed with `limit=250`:
+
+- `AAVEUSDT`: 250
+- `LABUSDT`: 250
+- `BTCUSDT`: 250
+- `ETHUSDT`: 250
+
+✅ Backend/frontend lint and builds passed
+
+---
+
+## Engineering Decisions
+
+- Candle ingestion is isolated behind `CandleDataProvider` to enable caching later without changing controller or response contracts.
+- CoinDCX raw payloads are never exposed directly; API always returns normalized candles.
+- Validation happens at controller boundary to keep downstream services pure and predictable.
+- Default interval and limit are centralized in constants to avoid duplicated magic values.
+- Debug panel validates data-layer correctness early before charting or indicators are introduced.
+
+---
+
+## Lessons Learned
+
+Establishing a normalized data contract early makes future indicator/scanner modules simpler and safer.
+
+---
+
+## Next
+
+- Add unit tests for validation and normalization logic.
+- Add optional in-memory caching adapter behind `CandleDataProvider`.
+- Keep scanner logic disabled until data-layer test coverage is in place.
+
+---
+
+## Development Score
+
+| Area | Score |
+| --- | --- |
+| Planning | ⭐⭐⭐⭐⭐ |
+| Architecture | ⭐⭐⭐⭐⭐ |
+| Code Quality | ⭐⭐⭐⭐⭐ |
+| Learning | ⭐⭐⭐⭐⭐ |
+| Features | ⭐⭐⭐⭐☆ |
+
+### Overall
+
+9.6/10
+
+---
+
+## Version
+
+v0.3.0

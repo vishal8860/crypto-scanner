@@ -28,6 +28,7 @@ npm run dev
 `backend/.env` supports these CoinDCX integration settings:
 
 - `COINDCX_API_BASE_URL` (default: `https://api.coindcx.com`)
+- `COINDCX_PUBLIC_API_BASE_URL` (default: `https://public.coindcx.com`)
 - `COINDCX_API_TIMEOUT_MS` (default: `10000`)
 - `COINDCX_API_RETRIES` (default: `3`)
 - `CORS_ALLOWED_ORIGINS` (default: `http://localhost:4200`, comma-separated for multiple origins)
@@ -71,3 +72,35 @@ The backend follows a modular boundary per domain (`markets`, `scanner`, `indica
   - Sorting by symbol and volume
   - Loading, empty, and error states
   - Refresh action
+
+## Day 3: Market Data Engine (Candles)
+
+- Backend endpoint available at `GET /api/candles` and `GET /api/v1/candles`
+- Required query params:
+  - `symbol` (e.g. `AAVEUSDT`)
+  - `interval` (supported: `1m`, `5m`, `15m`, `30m`, `1h`, `2h`, `4h`, `1d`)
+  - `limit` (`1` to `1000`, default `250`)
+- Backend `candles` module structure:
+  - `controller/` request parsing + validation
+  - `service/` orchestration and CoinDCX provider integration
+  - `dto/` request and response contracts
+  - `interfaces/` normalized entity and provider contracts
+  - `types/` interval and query types
+  - `constants/` supported intervals and limits
+- CoinDCX candle response is normalized before returning:
+
+```ts
+interface Candle {
+  timestamp: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+```
+
+- Frontend scanner includes a temporary debug panel:
+  - Click any market row
+  - Fetches last 250 candles (`15m`)
+  - Shows symbol, interval, candle count, latest close, latest volume, first timestamp, last timestamp

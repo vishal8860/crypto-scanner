@@ -60,9 +60,58 @@
           </ng-container>
 
           <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+          <tr
+            mat-row
+            *matRowDef="let row; columns: displayedColumns"
+            class="market-row"
+            [class.selected]="isSelectedMarket(row.symbol)"
+            (click)="onSelectMarket(row)"
+          ></tr>
         </table>
       </div>
+
+      <section class="debug-panel">
+        <h2>Market Data Inspector</h2>
+
+        @if (!selectedSymbol()) {
+          <p>Select a market row to fetch the latest {{ debugLimit }} candles.</p>
+        } @else if (candlesLoading()) {
+          <p>Loading candles for {{ selectedSymbol() }}...</p>
+        } @else if (candlesError()) {
+          <p class="debug-error">{{ candlesError() }}</p>
+        } @else if (selectedDebugSummary(); as summary) {
+          <dl>
+            <div>
+              <dt>Symbol</dt>
+              <dd>{{ summary.symbol }}</dd>
+            </div>
+            <div>
+              <dt>Interval</dt>
+              <dd>{{ summary.interval }}</dd>
+            </div>
+            <div>
+              <dt>Number of Candles</dt>
+              <dd>{{ summary.count }}</dd>
+            </div>
+            <div>
+              <dt>Latest Close</dt>
+              <dd>{{ formatNumber(summary.latestClose) }}</dd>
+            </div>
+            <div>
+              <dt>Latest Volume</dt>
+              <dd>{{ formatNumber(summary.latestVolume) }}</dd>
+            </div>
+            <div>
+              <dt>First Timestamp</dt>
+              <dd>{{ formatTimestamp(summary.firstTimestamp) }}</dd>
+            </div>
+            <div>
+              <dt>Last Timestamp</dt>
+              <dd>{{ formatTimestamp(summary.lastTimestamp) }}</dd>
+            </div>
+          </dl>
+        }
+      </section>
     }
   }
 </section>
