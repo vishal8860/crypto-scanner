@@ -71,15 +71,15 @@
       </div>
 
       <section class="debug-panel">
-        <h2>Market Data Inspector</h2>
+        <h2>Market Inspector</h2>
 
         @if (!selectedSymbol()) {
-          <p>Select a market row to fetch the latest {{ debugLimit }} candles.</p>
-        } @else if (candlesLoading()) {
-          <p>Loading candles for {{ selectedSymbol() }}...</p>
-        } @else if (candlesError()) {
-          <p class="debug-error">{{ candlesError() }}</p>
-        } @else if (selectedDebugSummary(); as summary) {
+          <p>Select a market row to calculate live indicators.</p>
+        } @else if (indicatorsLoading()) {
+          <p>Calculating indicators for {{ selectedSymbol() }}...</p>
+        } @else if (indicatorsError()) {
+          <p class="debug-error">{{ indicatorsError() }}</p>
+        } @else if (inspectorData(); as summary) {
           <dl>
             <div>
               <dt>Symbol</dt>
@@ -87,27 +87,43 @@
             </div>
             <div>
               <dt>Interval</dt>
-              <dd>{{ summary.interval }}</dd>
+              <dd>{{ inspectorInterval }}</dd>
             </div>
             <div>
-              <dt>Number of Candles</dt>
-              <dd>{{ summary.count }}</dd>
+              <dt>Price</dt>
+              <dd>{{ formatNumber(summary.price) }}</dd>
             </div>
             <div>
-              <dt>Latest Close</dt>
-              <dd>{{ formatNumber(summary.latestClose) }}</dd>
+              <dt>EMA9</dt>
+              <dd>{{ formatNumber(summary.ema9) }}</dd>
             </div>
             <div>
-              <dt>Latest Volume</dt>
-              <dd>{{ formatNumber(summary.latestVolume) }}</dd>
+              <dt>EMA20</dt>
+              <dd>{{ formatNumber(summary.ema20) }}</dd>
             </div>
             <div>
-              <dt>First Timestamp</dt>
-              <dd>{{ formatTimestamp(summary.firstTimestamp) }}</dd>
+              <dt>EMA200</dt>
+              <dd>{{ formatNumber(summary.ema200) }}</dd>
             </div>
             <div>
-              <dt>Last Timestamp</dt>
-              <dd>{{ formatTimestamp(summary.lastTimestamp) }}</dd>
+              <dt>Distance EMA20</dt>
+              <dd>{{ formatDistance(summary.distanceFromEMA20) }}</dd>
+            </div>
+            <div>
+              <dt>Distance EMA200</dt>
+              <dd>{{ formatDistance(summary.distanceFromEMA200) }}</dd>
+            </div>
+            <div>
+              <dt>Below EMA200</dt>
+              <dd>{{ summary.isBelowEMA200 ? 'Yes' : 'No' }}</dd>
+            </div>
+            <div>
+              <dt>Bearish Alignment</dt>
+              <dd>{{ summary.isBearishAlignment ? 'Yes' : 'No' }}</dd>
+            </div>
+            <div>
+              <dt>Trend</dt>
+              <dd>{{ summary.trend }}</dd>
             </div>
           </dl>
         }

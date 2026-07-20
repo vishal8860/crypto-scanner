@@ -104,3 +104,32 @@ interface Candle {
   - Click any market row
   - Fetches last 250 candles (`15m`)
   - Shows symbol, interval, candle count, latest close, latest volume, first timestamp, last timestamp
+
+## Day 4: Indicator Engine
+
+- Backend endpoint available at `GET /api/indicators` and `GET /api/v1/indicators`
+- Query params:
+  - `symbol` (e.g. `AAVEUSDT`)
+  - `interval` (same candle interval set as the market data engine)
+- Indicator Engine consumes only normalized `Candle[]` from the Candles module
+- Output contract:
+
+```ts
+interface IndicatorResult {
+  symbol: string;
+  price: number;
+  ema9: number;
+  ema20: number;
+  ema200: number;
+  distanceFromEMA20: number;
+  distanceFromEMA200: number;
+  isBelowEMA200: boolean;
+  isBearishAlignment: boolean;
+  trend: 'Bullish' | 'Bearish' | 'Neutral';
+}
+```
+
+- Frontend Scanner page now uses a Market Inspector panel:
+  - Click any market row
+  - Calculates indicators live through the backend
+  - Displays price, EMA9, EMA20, EMA200, distance metrics, below-EMA200 flag, bearish alignment flag, and trend

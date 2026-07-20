@@ -270,3 +270,95 @@ Establishing a normalized data contract early makes future indicator/scanner mod
 ## Version
 
 v0.3.0
+
+---
+
+# Day 4
+
+**Date**  
+20 July 2026
+
+## Objective
+
+Build the Indicator Engine on top of normalized candle data and surface live calculations in the Scanner page.
+
+---
+
+## Completed
+
+✅ New backend `indicators` module created with feature-first structure:
+
+- `controller/`
+- `service/`
+- `dto/`
+- `interfaces/`
+- `utils/`
+- `constants/`
+
+✅ Endpoint implemented: `GET /api/indicators` and `GET /api/v1/indicators`
+
+✅ Indicator Engine consumes only normalized candles from the Candles module
+
+✅ Reusable `calculateEMA()` utility implemented once and shared for EMA 9 / 20 / 200
+
+✅ IndicatorResult contract created with trend and distance fields
+
+✅ Validation added for `symbol` and `interval`
+
+✅ Frontend `IndicatorsService` added with typed API client
+
+✅ Scanner page updated to use Market Inspector instead of candle debug panel
+
+✅ Live indicator verification completed for:
+
+- `AAVEUSDT`
+- `BTCUSDT`
+- `ETHUSDT`
+- `LABUSDT`
+
+✅ Backend/frontend lint and builds passed
+
+---
+
+## Engineering Decisions
+
+- Indicators are computed from normalized Candle data only, so no CoinDCX vendor coupling leaks into the engine.
+- EMA logic is centralized in a single utility to prevent duplication and ensure future indicator reuse.
+- Controller validation is kept strict so the service layer can focus on computation, not HTTP concerns.
+- The Market Inspector is intentionally numeric-only and chart-free so the scanner can verify signal readiness before any visual layer is introduced.
+
+---
+
+## Lessons Learned
+
+A clean indicator boundary makes future scanner rules and strategy layers much easier to add without rewriting data plumbing.
+
+---
+
+## Next
+
+- Add unit tests for EMA calculation and indicator trend classification.
+- Add endpoint tests for invalid symbol and interval input.
+- Keep scanner logic focused on inspection until the data layer is fully covered.
+
+---
+
+## Development Score
+
+| Area | Score |
+| --- | --- |
+| Planning | ⭐⭐⭐⭐⭐ |
+| Architecture | ⭐⭐⭐⭐⭐ |
+| Code Quality | ⭐⭐⭐⭐⭐ |
+| Learning | ⭐⭐⭐⭐⭐ |
+| Features | ⭐⭐⭐⭐☆ |
+
+### Overall
+
+9.7/10
+
+---
+
+## Version
+
+v0.4.0

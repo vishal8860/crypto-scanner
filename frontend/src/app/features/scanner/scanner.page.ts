@@ -5,8 +5,9 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
-import { Candle, CandleInterval } from './candle.interface';
-import { CandlesService } from './candles.service';
+import { CandleInterval } from './candle.interface';
+import { IndicatorResult } from './indicator-result.interface';
+import { IndicatorsService } from './indicators.service';
 import { Market } from './market.interface';
 import { MarketsService } from './markets.service';
 
@@ -28,45 +29,20 @@ export class ScannerPageComponent implements OnInit, AfterViewInit {
 	@ViewChild(MatSort) private sort?: MatSort;
 
 	protected readonly displayedColumns = ['symbol', 'lastPrice', 'change24HourPercent', 'volume', 'status'];
-	protected readonly debugInterval: CandleInterval = '15m';
-	protected readonly debugLimit = 250;
+	protected readonly inspectorInterval: CandleInterval = '15m';
 	protected readonly searchTerm = signal('');
 	protected readonly dataSource = new MatTableDataSource<Market>([]);
 	protected readonly selectedSymbol = signal<string | null>(null);
-	protected readonly candles = signal<readonly Candle[]>([]);
-	protected readonly candlesLoading = signal(false);
-	protected readonly candlesError = signal<string | null>(null);
+	protected readonly indicators = signal<IndicatorResult | null>(null);
+	protected readonly indicatorsLoading = signal(false);
+	protected readonly indicatorsError = signal<string | null>(null);
 
 	protected readonly markets = computed(() => this.marketsService.markets());
-	protected readonly selectedDebugSummary = computed(() => {
-		const symbol = this.selectedSymbol();
-		const candles = this.candles();
-
-		if (!symbol || candles.length === 0) {
-			return null;
-		}
-
-		const first = candles[0];
-		const last = candles[candles.length - 1];
-
-		if (!first || !last) {
-			return null;
-		}
-
-		return {
-			symbol,
-			interval: this.debugInterval,
-			count: candles.length,
-			latestClose: last.close,
-			latestVolume: last.volume,
-			firstTimestamp: first.timestamp,
-			lastTimestamp: last.timestamp
-		};
-	});
+	protected readonly inspectorData = computed(() => this.indicators());
 
 	public constructor(
 		protected readonly marketsService: MarketsService,
-		private readonly candlesService: CandlesService
+		private readonly indicatorsService: IndicatorsService
 	) {
 		this.dataSource.filterPredicate = (market: Market, filter: string) =>
 			market.symbol.toLowerCase().includes(filter.trim().toLowerCase());
@@ -115,18 +91,18 @@ export class ScannerPageComponent implements OnInit, AfterViewInit {
 
 	protected async onSelectMarket(market: Market): Promise<void> {
 		this.selectedSymbol.set(market.symbol);
-		this.candlesLoading.set(true);
-		this.candlesError.set(null);
+		this.indicatorsLoading.set(true);
+		this.indicatorsError.set(null);
 
 		try {
-			const response = await this.candlesService.getCandles(market.symbol, this.debugInterval, this.debugLimit);
-			this.candles.set(response.data);
+			const result = await this.indicatorsService.getIndicators(market.symbol, this.inspectorInterval);
+			this.indicators.set(result);
 		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Failed to load candles';
-			this.candles.set([]);
-			this.candlesError.set(message);
+			const message = error instanceof Error ? error.message : 'Failed to load indicators';
+			this.indicators.set(null);
+			this.indicatorsError.set(message);
 		} finally {
-			this.candlesLoading.set(false);
+			this.indicatorsLoading.set(false);
 		}
 	}
 
@@ -138,8 +114,8 @@ export class ScannerPageComponent implements OnInit, AfterViewInit {
 		return value === null ? 'N/A' : `${value.toFixed(3)}%`;
 	}
 
-  protected formatTimestamp(timestamp: number): string {
-    return new Date(timestamp).toLocaleString();
+	protected formatDistance(value: number): string {
+		return `${value >= 0 ? '+' : ''}${value.toFixed(8)}`;
   }
 
 	private applyFilter(): void {
