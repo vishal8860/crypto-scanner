@@ -362,3 +362,292 @@ A clean indicator boundary makes future scanner rules and strategy layers much e
 ## Version
 
 v0.4.0
+
+---
+
+# Day 5
+
+**Date**  
+21 July 2026
+
+## Objective
+
+Build a Bearish Opportunity Scoring Engine on top of the existing Indicator Engine.
+
+---
+
+## Completed
+
+✅ Extended `IndicatorResult` with bearish opportunity metrics:
+
+- `distanceFromEMA20Percent`
+- `distanceFromEMA200Percent`
+- `candlesSinceEMA200Cross`
+- `freshCross`
+- `trendAge`
+- `scannerScore`
+
+✅ Implemented reusable utility modules:
+
+- `calculateEMASeries()`
+- `countCandlesSinceEMA200Cross()`
+- `resolveTrendAge()`
+- `calculateScannerScore()`
+
+✅ Added rule-based scoring engine (0 to 100 clamp) using constant configuration
+
+✅ Market Inspector updated to display all new scoring fields
+
+✅ Verified symbols:
+
+- `AAVEUSDT`
+- `BTCUSDT`
+- `ETHUSDT`
+- `LABUSDT`
+
+✅ Backend/frontend lint and builds passed
+
+---
+
+## Engineering Decisions
+
+- Kept scoring logic in dedicated utilities to avoid bloating `IndicatorsService`.
+- Used EMA200 series computation utility so cross-detection can be deterministic and reusable.
+- Encoded thresholds and scoring weights as constants for maintainability and future tuning.
+- Preserved strict separation: indicator/scoring engine consumes normalized candles only, never exchange payloads.
+
+---
+
+## Lessons Learned
+
+Scoring rules evolve quickly, so constant-driven and utility-oriented design makes the system easier to tune without destabilizing API contracts.
+
+---
+
+## Next
+
+- Add unit tests for cross-detection and score-weight boundaries.
+- Add endpoint contract tests for new Day 5 fields.
+- Start scanner ranking list once score confidence and tests are stable.
+
+---
+
+## Development Score
+
+| Area | Score |
+| --- | --- |
+| Planning | ⭐⭐⭐⭐⭐ |
+| Architecture | ⭐⭐⭐⭐⭐ |
+| Code Quality | ⭐⭐⭐⭐⭐ |
+| Learning | ⭐⭐⭐⭐⭐ |
+| Features | ⭐⭐⭐⭐⭐ |
+
+### Overall
+
+9.8/10
+
+---
+
+## Version
+
+v0.5.0
+
+---
+
+# Day 6
+
+**Date**  
+21 July 2026
+
+## Objective
+
+Transform Scanner from single-symbol analysis into a market-wide scanning engine.
+
+---
+
+## Completed
+
+✅ Created frontend `ScannerEngineService` for market-wide scanning orchestration
+
+✅ Implemented `ScannerResult` model with ranking and scanner-opportunity fields
+
+✅ Added batched concurrency control for indicator requests (batch size: 8)
+
+✅ Added live scan progress reporting (`Current: x / total`)
+
+✅ Added Scanner Opportunities table with required columns:
+
+- Rank
+- Symbol
+- Scanner Score
+- Trend
+- Trend Age
+- Fresh Cross
+- Distance EMA200
+- Below EMA200
+
+✅ Enabled row click to update existing Market Inspector from selected `ScannerResult`
+
+✅ Added Scan button to refresh all opportunities
+
+✅ Implemented backend candle cache (TTL 60 seconds) to reduce repeated CoinDCX hits
+
+✅ Scanner opportunities auto-sorted by Scanner Score descending
+
+✅ Lint/build validations passed for backend and frontend
+
+---
+
+## Engineering Decisions
+
+- Kept scanner orchestration in dedicated `ScannerEngineService` for separation of concerns and easier testing.
+- Retained indicator computation on backend; frontend only orchestrates scan execution and presentation.
+- Used batched request windows instead of unbounded parallelism to reduce vendor API stress.
+- Added cache at candles service level so all consumers (inspector and market scans) benefit uniformly.
+- Kept Market Inspector contract stable by selecting from the already-computed `ScannerResult`.
+
+---
+
+## Lessons Learned
+
+The combination of batched concurrency + short-lived candle caching is critical for reliable market-wide scans without overwhelming upstream APIs.
+
+---
+
+## Next
+
+- Add scan cancellation and retry controls for long-running scans.
+- Add unit tests for scanner batching and ranking behavior.
+- Add backend endpoint for server-side bulk scanning when scaling beyond browser-triggered scans.
+
+---
+
+## Development Score
+
+| Area | Score |
+| --- | --- |
+| Planning | ⭐⭐⭐⭐⭐ |
+| Architecture | ⭐⭐⭐⭐⭐ |
+| Code Quality | ⭐⭐⭐⭐⭐ |
+| Learning | ⭐⭐⭐⭐⭐ |
+| Features | ⭐⭐⭐⭐⭐ |
+
+### Overall
+
+9.9/10
+
+---
+
+## Version
+
+v0.6.0
+
+---
+
+# Day 6.1
+
+**Date**  
+21 July 2026
+
+## Objective
+
+Improve scanner usability using visual badges, chips, row emphasis, and score legend while preserving existing scanner behavior.
+
+---
+
+## Completed
+
+✅ Added reusable scanner UI components:
+
+- `vs-scanner-score-badge`
+- `vs-scanner-trend-chip`
+- `vs-scanner-status-chip`
+
+✅ Replaced plain numeric score display with Opportunity Badge system:
+
+- 🟢 Excellent (90-100)
+- 🟡 Good (75-89)
+- 🟠 Average (60-74)
+- 🔴 Ignore (<60)
+
+✅ Replaced trend text with visual trend chips:
+
+- 🔻 Bearish
+- 🟢 Bullish
+- ⚪ Neutral
+
+✅ Replaced Fresh Cross text indicators:
+
+- ✅ Fresh
+- ❌ Old Trend
+
+✅ Replaced Trend Age text with colored chips:
+
+- Fresh (Green)
+- Developing (Orange)
+- Old (Red)
+
+✅ Replaced EMA alignment text with explicit status chips:
+
+- 🔴 Bearish Alignment
+- 🟢 Bullish Alignment
+- ⚪ Mixed Alignment
+
+✅ Added distance color coding for EMA200/EMA20 values:
+
+- within ±3% => Green
+- 3% to 8% => Orange
+- >8% => Red
+
+✅ Added Scanner Score Legend above table
+
+✅ Added row-level visual emphasis by score tier with hover and selected row highlighting
+
+✅ Preserved responsive layout for badges/chips on narrower screens
+
+✅ Frontend lint/build passed with no breaking changes
+
+---
+
+## Engineering Decisions
+
+- Encapsulated badge/chip behavior into reusable standalone components to avoid duplicated UI logic.
+- Centralized UI color values via SCSS variables instead of inline hardcoded colors.
+- Kept scanner computation and API contracts unchanged; this release focuses purely on visual readability.
+- Used typed helper methods for tiering/alignment classification to keep template logic clean and testable.
+
+---
+
+## Lessons Learned
+
+Visual hierarchy dramatically improves scanner usability; traders can parse opportunity quality faster with consistent badges and chip semantics.
+
+---
+
+## Next
+
+- Add accessibility labels for badge/chip states.
+- Add minimal component tests for score tier and chip mapping.
+- Add optional user preference toggle for compact vs detailed table density.
+
+---
+
+## Development Score
+
+| Area | Score |
+| --- | --- |
+| Planning | ⭐⭐⭐⭐⭐ |
+| Architecture | ⭐⭐⭐⭐⭐ |
+| Code Quality | ⭐⭐⭐⭐⭐ |
+| Learning | ⭐⭐⭐⭐⭐ |
+| Features | ⭐⭐⭐⭐⭐ |
+
+### Overall
+
+10/10
+
+---
+
+## Version
+
+v0.6.1

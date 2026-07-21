@@ -1,0 +1,41 @@
+:host {
+  --tone-green-bg: #e8f5e9;
+  --tone-green-text: #1b5e20;
+  --tone-amber-bg: #fff8e1;
+  --tone-amber-text: #8d6e00;
+  --tone-orange-bg: #fff3e0;
+  --tone-orange-text: #a84300;
+  --tone-red-bg: #ffebee;
+  --tone-red-text: #b71c1c;
+  --tone-neutral-bg: #f5f5f5;
+  --tone-neutral-text: #424242;
+}
+
+.status-chip {
+  font-weight: 600;
+}
+
+.status-chip.green {
+  background: var(--tone-green-bg);
+  color: var(--tone-green-text);
+}
+
+.status-chip.amber {
+  background: var(--tone-amber-bg);
+  color: var(--tone-amber-text);
+}
+
+.status-chip.orange {
+  background: var(--tone-orange-bg);
+  color: var(--tone-orange-text);
+}
+
+.status-chip.red {
+  background: var(--tone-red-bg);
+  color: var(--tone-red-text);
+}
+
+.status-chip.neutral {
+  background: var(--tone-neutral-bg);
+  color: var(--tone-neutral-text);
+}

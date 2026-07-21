@@ -1,8 +1,8 @@
 <section class="scanner-page">
   <header class="page-header">
     <div>
-      <h1>CoinDCX Futures Markets</h1>
-      <p>Live futures instrument list with ticker metrics.</p>
+      <h1>Scanner Opportunities</h1>
+      <p>Market-wide bearish opportunity ranking engine.</p>
     </div>
   </header>
 
@@ -11,52 +11,89 @@
       <mat-label>Search by symbol</mat-label>
       <input matInput [value]="searchTerm()" (input)="onSearch($event)" placeholder="e.g. BTCUSDT" />
     </mat-form-field>
-    <button mat-flat-button type="button" class="refresh-button" (click)="refresh()" [disabled]="marketsService.loading()">
-      {{ marketsService.loading() ? 'Refreshing...' : 'Refresh' }}
+    <button mat-flat-button type="button" class="refresh-button" (click)="scan()" [disabled]="scanning()">
+      {{ scanning() ? 'Scanning...' : 'Scan' }}
     </button>
   </div>
+  <section class="score-legend" aria-label="Scanner score legend">
+    @for (item of scoreLegend; track item) {
+      <span class="legend-item">{{ item }}</span>
+    }
+  </section>
 
-  @if (marketsService.loading()) {
+  @if (scanning()) {
     <div class="state-box">
       <mat-spinner diameter="40" />
-      <p>Loading CoinDCX futures markets...</p>
+      <p>Scanning markets...</p>
+      @if (scanProgress(); as progress) {
+        <p>Current: {{ progress.current }} / {{ progress.total }}</p>
+      }
     </div>
-  } @else if (marketsService.error()) {
+  } @else if (scanError()) {
     <div class="state-box error-box" role="alert">
-      <p>{{ marketsService.error() }}</p>
-      <p>Use the Refresh button to retry.</p>
+      <p>{{ scanError() }}</p>
+      <p>Use Scan to retry.</p>
     </div>
   } @else {
     @if (dataSource.filteredData.length === 0) {
       <div class="state-box">
-        <p>No markets found for the current search.</p>
+        <p>No opportunities found for the current search.</p>
       </div>
     } @else {
       <div class="table-wrapper">
-        <table mat-table [dataSource]="dataSource" matSort matSortActive="symbol" matSortDirection="asc" matSortDisableClear>
+        <table mat-table [dataSource]="dataSource">
+          <ng-container matColumnDef="rank">
+            <th mat-header-cell *matHeaderCellDef>Rank</th>
+            <td mat-cell *matCellDef="let row">{{ row.rank }}</td>
+          </ng-container>
+
           <ng-container matColumnDef="symbol">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Symbol</th>
-            <td mat-cell *matCellDef="let market">{{ market.symbol }}</td>
+            <th mat-header-cell *matHeaderCellDef>Symbol</th>
+            <td mat-cell *matCellDef="let row">{{ row.symbol }}</td>
           </ng-container>
 
-          <ng-container matColumnDef="lastPrice">
-            <th mat-header-cell *matHeaderCellDef>Last Price</th>
-            <td mat-cell *matCellDef="let market">{{ formatNumber(market.lastPrice) }}</td>
+          <ng-container matColumnDef="score">
+            <th mat-header-cell *matHeaderCellDef>Scanner Score</th>
+            <td mat-cell *matCellDef="let row"><vs-scanner-score-badge [score]="row.score" /></td>
           </ng-container>
 
-          <ng-container matColumnDef="change24HourPercent">
-            <th mat-header-cell *matHeaderCellDef>24 Hour Change %</th>
-            <td mat-cell *matCellDef="let market">{{ formatPercent(market.change24HourPercent) }}</td>
+          <ng-container matColumnDef="trend">
+            <th mat-header-cell *matHeaderCellDef>Trend</th>
+            <td mat-cell *matCellDef="let row"><vs-scanner-trend-chip [trend]="row.trend" /></td>
           </ng-container>
 
-          <ng-container matColumnDef="volume">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Volume</th>
-            <td mat-cell *matCellDef="let market">{{ formatNumber(market.volume) }}</td>
+          <ng-container matColumnDef="trendAge">
+            <th mat-header-cell *matHeaderCellDef>Trend Age</th>
+            <td mat-cell *matCellDef="let row">
+              <vs-scanner-status-chip
+                [icon]="trendAgeChip(row.trendAge).icon"
+                [label]="trendAgeChip(row.trendAge).label"
+                [tone]="trendAgeChip(row.trendAge).tone"
+              />
+            </td>
           </ng-container>
 
-          <ng-container matColumnDef="status">
-            <th mat-header-cell *matHeaderCellDef>Status</th>
-            <td mat-cell *matCellDef="let market">{{ market.status || 'N/A' }}</td>
+          <ng-container matColumnDef="freshCross">
+            <th mat-header-cell *matHeaderCellDef>Fresh Cross</th>
+            <td mat-cell *matCellDef="let row">
+              <vs-scanner-status-chip
+                [icon]="freshCrossChip(row.freshCross).icon"
+                [label]="freshCrossChip(row.freshCross).label"
+                [tone]="freshCrossChip(row.freshCross).tone"
+              />
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="distanceEMA200">
+            <th mat-header-cell *matHeaderCellDef>Distance EMA200</th>
+            <td mat-cell *matCellDef="let row">
+              <span [class]="distanceClass(row.distanceEMA200)">{{ formatDistance(row.distanceEMA200) }}</span>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="belowEMA200">
+            <th mat-header-cell *matHeaderCellDef>Below EMA200</th>
+            <td mat-cell *matCellDef="let row">{{ row.belowEMA200 ? 'Yes' : 'No' }}</td>
           </ng-container>
 
           <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
@@ -64,8 +101,12 @@
             mat-row
             *matRowDef="let row; columns: displayedColumns"
             class="market-row"
+            [class.score-excellent]="isScoreTier(row.score, 'excellent')"
+            [class.score-good]="isScoreTier(row.score, 'good')"
+            [class.score-average]="isScoreTier(row.score, 'average')"
+            [class.score-ignore]="isScoreTier(row.score, 'ignore')"
             [class.selected]="isSelectedMarket(row.symbol)"
-            (click)="onSelectMarket(row)"
+            (click)="onSelectOpportunity(row)"
           ></tr>
         </table>
       </div>
@@ -74,11 +115,7 @@
         <h2>Market Inspector</h2>
 
         @if (!selectedSymbol()) {
-          <p>Select a market row to calculate live indicators.</p>
-        } @else if (indicatorsLoading()) {
-          <p>Calculating indicators for {{ selectedSymbol() }}...</p>
-        } @else if (indicatorsError()) {
-          <p class="debug-error">{{ indicatorsError() }}</p>
+          <p>Select an opportunity row to inspect indicator values.</p>
         } @else if (inspectorData(); as summary) {
           <dl>
             <div>
@@ -107,23 +144,57 @@
             </div>
             <div>
               <dt>Distance EMA20</dt>
-              <dd>{{ formatDistance(summary.distanceFromEMA20) }}</dd>
+              <dd><span [class]="distanceClass(summary.distanceEMA20)">{{ formatDistance(summary.distanceEMA20) }}</span></dd>
             </div>
             <div>
               <dt>Distance EMA200</dt>
-              <dd>{{ formatDistance(summary.distanceFromEMA200) }}</dd>
+              <dd><span [class]="distanceClass(summary.distanceEMA200)">{{ formatDistance(summary.distanceEMA200) }}</span></dd>
+            </div>
+            <div>
+              <dt>Candles Since EMA200 Cross</dt>
+              <dd>{{ summary.candlesSinceCross }}</dd>
+            </div>
+            <div>
+              <dt>Trend Age</dt>
+              <dd>
+                <vs-scanner-status-chip
+                  [icon]="trendAgeChip(summary.trendAge).icon"
+                  [label]="trendAgeChip(summary.trendAge).label"
+                  [tone]="trendAgeChip(summary.trendAge).tone"
+                />
+              </dd>
+            </div>
+            <div>
+              <dt>Fresh Cross</dt>
+              <dd>
+                <vs-scanner-status-chip
+                  [icon]="freshCrossChip(summary.freshCross).icon"
+                  [label]="freshCrossChip(summary.freshCross).label"
+                  [tone]="freshCrossChip(summary.freshCross).tone"
+                />
+              </dd>
             </div>
             <div>
               <dt>Below EMA200</dt>
-              <dd>{{ summary.isBelowEMA200 ? 'Yes' : 'No' }}</dd>
+              <dd>{{ summary.belowEMA200 ? 'Yes' : 'No' }}</dd>
             </div>
             <div>
               <dt>Bearish Alignment</dt>
-              <dd>{{ summary.isBearishAlignment ? 'Yes' : 'No' }}</dd>
+              <dd>
+                <vs-scanner-status-chip
+                  [icon]="alignmentChip(summary).icon"
+                  [label]="alignmentChip(summary).label"
+                  [tone]="alignmentChip(summary).tone"
+                />
+              </dd>
             </div>
             <div>
               <dt>Trend</dt>
-              <dd>{{ summary.trend }}</dd>
+              <dd><vs-scanner-trend-chip [trend]="summary.trend" /></dd>
+            </div>
+            <div>
+              <dt>Scanner Score</dt>
+              <dd><vs-scanner-score-badge [score]="summary.score" /></dd>
             </div>
           </dl>
         }

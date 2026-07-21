@@ -1,0 +1,4 @@
+<span class="score-badge" [ngClass]="badge().tone">
+  <span class="label">{{ badge().icon }} {{ badge().label }}</span>
+  <span class="value">{{ score() | number: '1.0-0' }}</span>
+</span>

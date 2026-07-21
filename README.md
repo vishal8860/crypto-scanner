@@ -121,11 +121,15 @@ interface IndicatorResult {
   ema9: number;
   ema20: number;
   ema200: number;
-  distanceFromEMA20: number;
-  distanceFromEMA200: number;
+  distanceFromEMA20Percent: number;
+  distanceFromEMA200Percent: number;
   isBelowEMA200: boolean;
   isBearishAlignment: boolean;
   trend: 'Bullish' | 'Bearish' | 'Neutral';
+  candlesSinceEMA200Cross: number;
+  freshCross: boolean;
+  trendAge: 'Fresh' | 'Developing' | 'Old';
+  scannerScore: number;
 }
 ```
 
@@ -133,3 +137,54 @@ interface IndicatorResult {
   - Click any market row
   - Calculates indicators live through the backend
   - Displays price, EMA9, EMA20, EMA200, distance metrics, below-EMA200 flag, bearish alignment flag, and trend
+
+## Day 5: Bearish Opportunity Scoring Engine
+
+- Indicator Engine expanded with additional bearish opportunity metrics:
+  - Percentage distance from EMA20 and EMA200
+  - Candles since bearish EMA200 cross (above to below)
+  - Fresh-cross flag (`<= 8` candles)
+  - Trend age (`Fresh`, `Developing`, `Old`)
+  - Scanner score (0 to 100)
+- Scoring model is constant-driven and modular:
+  - Below EMA200: `+25`
+  - Bearish EMA alignment: `+25`
+  - Fresh cross: `+25`
+  - Distance below EMA200 `< 3%`: `+25`
+  - Distance below EMA200 `> 8%`: `-20`
+  - Trend age `Old`: `-15`
+- Scanner page Market Inspector now shows:
+  - Current price
+  - EMA9 / EMA20 / EMA200
+  - Distance EMA20 / EMA200 (percentage)
+  - Candles since EMA200 cross
+  - Trend age
+  - Fresh cross
+  - Scanner score
+
+## Day 6: Market-Wide Scan Engine
+
+- Frontend `ScannerEngineService` added to transform single-symbol inspection into market-wide scanning.
+- Scan flow:
+  - Load active futures markets
+  - Fetch indicators for each symbol at `15m`
+  - Build `ScannerResult[]`
+  - Auto-sort by `score` descending
+- Concurrency control:
+  - Batched indicator requests (`8` per batch) to reduce API pressure
+- Progress reporting:
+  - Scanner page shows live progress `Current: x / total`
+- Candle cache:
+  - Backend candles service now applies in-memory `60s` TTL cache by `symbol + interval + limit`
+  - Repeated scans within TTL avoid unnecessary CoinDCX candle calls
+- Scanner Opportunities table columns:
+  - Rank
+  - Symbol
+  - Scanner Score
+  - Trend
+  - Trend Age
+  - Fresh Cross
+  - Distance EMA200
+  - Below EMA200
+- Row click behavior:
+  - Clicking an opportunity row updates Market Inspector from selected `ScannerResult`

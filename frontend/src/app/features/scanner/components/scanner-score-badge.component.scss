@@ -1,0 +1,44 @@
+:host {
+  --tone-green-bg: #e8f5e9;
+  --tone-green-text: #1b5e20;
+  --tone-amber-bg: #fff8e1;
+  --tone-amber-text: #8d6e00;
+  --tone-orange-bg: #fff3e0;
+  --tone-orange-text: #a84300;
+  --tone-red-bg: #ffebee;
+  --tone-red-text: #b71c1c;
+}
+
+.score-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-weight: 600;
+}
+
+.value {
+  border-left: 1px solid currentColor;
+  padding-left: 0.45rem;
+}
+
+.score-badge.green {
+  background: var(--tone-green-bg);
+  color: var(--tone-green-text);
+}
+
+.score-badge.amber {
+  background: var(--tone-amber-bg);
+  color: var(--tone-amber-text);
+}
+
+.score-badge.orange {
+  background: var(--tone-orange-bg);
+  color: var(--tone-orange-text);
+}
+
+.score-badge.red {
+  background: var(--tone-red-bg);
+  color: var(--tone-red-text);
+}

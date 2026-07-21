@@ -1,78 +1,94 @@
-import { AfterViewInit, ChangeDetectionStrategy, Component, OnInit, ViewChild, computed, effect, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, effect, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { CandleInterval } from './candle.interface';
-import { IndicatorResult } from './indicator-result.interface';
-import { IndicatorsService } from './indicators.service';
-import { Market } from './market.interface';
-import { MarketsService } from './markets.service';
+import { TrendAge } from './indicator-result.interface';
+import { ScannerEngineService } from './scanner-engine.service';
+import { ScannerResult } from './scanner-result.interface';
+import { ScannerScoreBadgeComponent } from './components/scanner-score-badge.component';
+import { ChipTone, ScannerStatusChipComponent } from './components/scanner-status-chip.component';
+import { ScannerTrendChipComponent } from './components/scanner-trend-chip.component';
+
+type ScoreTier = 'excellent' | 'good' | 'average' | 'ignore';
+type AlignmentState = 'bearish' | 'bullish' | 'mixed';
+
+interface ChipConfig {
+	readonly icon: string;
+	readonly label: string;
+	readonly tone: ChipTone;
+}
 
 @Component({
 	selector: 'vs-scanner-page',
 	imports: [
 		MatTableModule,
-		MatSortModule,
 		MatProgressSpinnerModule,
 		MatFormFieldModule,
 		MatInputModule,
-		MatButtonModule
+		MatButtonModule,
+		ScannerScoreBadgeComponent,
+		ScannerStatusChipComponent,
+		ScannerTrendChipComponent
 	],
 	templateUrl: './scanner.page.html',
 	styleUrl: './scanner.page.scss',
 	changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ScannerPageComponent implements OnInit, AfterViewInit {
-	@ViewChild(MatSort) private sort?: MatSort;
-
-	protected readonly displayedColumns = ['symbol', 'lastPrice', 'change24HourPercent', 'volume', 'status'];
+export class ScannerPageComponent implements OnInit {
+	protected readonly displayedColumns = [
+		'rank',
+		'symbol',
+		'score',
+		'trend',
+		'trendAge',
+		'freshCross',
+		'distanceEMA200',
+		'belowEMA200'
+	];
 	protected readonly inspectorInterval: CandleInterval = '15m';
 	protected readonly searchTerm = signal('');
-	protected readonly dataSource = new MatTableDataSource<Market>([]);
+	protected readonly dataSource = new MatTableDataSource<ScannerResult>([]);
 	protected readonly selectedSymbol = signal<string | null>(null);
-	protected readonly indicators = signal<IndicatorResult | null>(null);
-	protected readonly indicatorsLoading = signal(false);
-	protected readonly indicatorsError = signal<string | null>(null);
+	protected readonly selectedResult = signal<ScannerResult | null>(null);
 
-	protected readonly markets = computed(() => this.marketsService.markets());
-	protected readonly inspectorData = computed(() => this.indicators());
+	protected readonly scanResults = computed(() => this.scannerEngineService.opportunities());
+	protected readonly inspectorData = computed(() => this.selectedResult());
+	protected readonly scanning = computed(() => this.scannerEngineService.scanning());
+	protected readonly scanError = computed(() => this.scannerEngineService.error());
+	protected readonly scanProgress = computed(() => this.scannerEngineService.progress());
+	protected readonly scoreLegend = [
+		'🟢 Excellent (90-100)',
+		'🟡 Good (75-89)',
+		'🟠 Average (60-74)',
+		'🔴 Ignore (<60)'
+	] as const;
 
 	public constructor(
-		protected readonly marketsService: MarketsService,
-		private readonly indicatorsService: IndicatorsService
+		protected readonly scannerEngineService: ScannerEngineService
 	) {
-		this.dataSource.filterPredicate = (market: Market, filter: string) =>
-			market.symbol.toLowerCase().includes(filter.trim().toLowerCase());
-
-		this.dataSource.sortingDataAccessor = (market: Market, column: string): string | number => {
-			if (column === 'symbol') {
-				return market.symbol;
-			}
-
-			if (column === 'volume') {
-				return market.volume ?? -1;
-			}
-
-			return 0;
-		};
+		this.dataSource.filterPredicate = (row: ScannerResult, filter: string) =>
+			row.symbol.toLowerCase().includes(filter.trim().toLowerCase());
 
 		effect(() => {
-			this.dataSource.data = [...this.markets()];
+			this.dataSource.data = [...this.scanResults()];
+
+			const selected = this.selectedSymbol();
+			if (!selected) {
+				this.applyFilter();
+				return;
+			}
+
+			const updated = this.scanResults().find((result) => result.symbol === selected) ?? null;
+			this.selectedResult.set(updated);
 			this.applyFilter();
 		});
 	}
 
 	public ngOnInit(): void {
-		void this.refresh();
-	}
-
-	public ngAfterViewInit(): void {
-		if (this.sort) {
-			this.dataSource.sort = this.sort;
-		}
+		void this.scan();
 	}
 
 	protected onSearch(event: Event): void {
@@ -81,29 +97,17 @@ export class ScannerPageComponent implements OnInit, AfterViewInit {
 		this.applyFilter();
 	}
 
-	protected async refresh(): Promise<void> {
-		await this.marketsService.refresh();
+	protected async scan(): Promise<void> {
+		await this.scannerEngineService.scan(this.inspectorInterval);
 	}
 
 	protected isSelectedMarket(symbol: string): boolean {
 		return this.selectedSymbol() === symbol;
 	}
 
-	protected async onSelectMarket(market: Market): Promise<void> {
-		this.selectedSymbol.set(market.symbol);
-		this.indicatorsLoading.set(true);
-		this.indicatorsError.set(null);
-
-		try {
-			const result = await this.indicatorsService.getIndicators(market.symbol, this.inspectorInterval);
-			this.indicators.set(result);
-		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Failed to load indicators';
-			this.indicators.set(null);
-			this.indicatorsError.set(message);
-		} finally {
-			this.indicatorsLoading.set(false);
-		}
+	protected onSelectOpportunity(result: ScannerResult): void {
+		this.selectedSymbol.set(result.symbol);
+		this.selectedResult.set(result);
 	}
 
 	protected formatNumber(value: number | null): string {
@@ -115,8 +119,86 @@ export class ScannerPageComponent implements OnInit, AfterViewInit {
 	}
 
 	protected formatDistance(value: number): string {
-		return `${value >= 0 ? '+' : ''}${value.toFixed(8)}`;
-  }
+		return `${value >= 0 ? '+' : ''}${value.toFixed(4)}%`;
+	}
+
+	protected scoreTier(score: number): ScoreTier {
+		if (score >= 90) {
+			return 'excellent';
+		}
+
+		if (score >= 75) {
+			return 'good';
+		}
+
+		if (score >= 60) {
+			return 'average';
+		}
+
+		return 'ignore';
+	}
+
+	protected isScoreTier(score: number, tier: ScoreTier): boolean {
+		return this.scoreTier(score) === tier;
+	}
+
+	protected trendAgeChip(age: TrendAge): ChipConfig {
+		if (age === 'Fresh') {
+			return { icon: '🟢', label: 'Fresh', tone: 'green' };
+		}
+
+		if (age === 'Developing') {
+			return { icon: '🟠', label: 'Developing', tone: 'orange' };
+		}
+
+		return { icon: '🔴', label: 'Old', tone: 'red' };
+	}
+
+	protected freshCrossChip(freshCross: boolean): ChipConfig {
+		return freshCross
+			? { icon: '✅', label: 'Fresh', tone: 'green' }
+			: { icon: '❌', label: 'Old Trend', tone: 'red' };
+	}
+
+	protected alignmentState(result: ScannerResult): AlignmentState {
+		if (result.bearishAlignment) {
+			return 'bearish';
+		}
+
+		if (result.ema9 > result.ema20 && result.ema20 > result.ema200) {
+			return 'bullish';
+		}
+
+		return 'mixed';
+	}
+
+	protected alignmentChip(result: ScannerResult): ChipConfig {
+		const state = this.alignmentState(result);
+
+		if (state === 'bearish') {
+			return { icon: '🔴', label: 'Bearish Alignment', tone: 'red' };
+		}
+
+		if (state === 'bullish') {
+			return { icon: '🟢', label: 'Bullish Alignment', tone: 'green' };
+		}
+
+		return { icon: '⚪', label: 'Mixed Alignment', tone: 'neutral' };
+	}
+
+	protected distanceClass(distance: number): 'distance-green' | 'distance-orange' | 'distance-red' {
+		const magnitude = Math.abs(distance);
+
+		if (magnitude <= 3) {
+			return 'distance-green';
+		}
+
+		if (magnitude <= 8) {
+			return 'distance-orange';
+		}
+
+		return 'distance-red';
+	}
 
 	private applyFilter(): void {
 		this.dataSource.filter = this.searchTerm().trim().toLowerCase();
