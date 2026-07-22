@@ -42,6 +42,7 @@ export class ScannerPageComponent implements OnInit {
 		'rank',
 		'symbol',
 		'score',
+		'entryQuality',
 		'priority',
 		'tradeStage',
 		'trend',
@@ -114,19 +115,107 @@ export class ScannerPageComponent implements OnInit {
 	}
 
 	protected formatNumber(value: number | null): string {
-		return value === null ? 'N/A' : value.toLocaleString(undefined, { maximumFractionDigits: 8 });
+		return value === null ? 'N/A' : value.toFixed(5);
 	}
 
 	protected formatPercent(value: number | null): string {
-		return value === null ? 'N/A' : `${value.toFixed(3)}%`;
+		return value === null ? 'N/A' : `${value.toFixed(2)}%`;
 	}
 
 	protected formatSignedPercent(value: number): string {
-		return `${value >= 0 ? '+' : ''}${value.toFixed(4)}%`;
+		return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
 	}
 
 	protected formatDistance(value: number): string {
-		return `${value >= 0 ? '+' : ''}${value.toFixed(4)}%`;
+		return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
+	}
+
+	protected formatRiskReward(value: number | null): string {
+		return value === null ? 'N/A' : value.toFixed(2);
+	}
+
+	protected formatEfficiency(value: number): string {
+		return `${value.toFixed(2)}%/candle`;
+	}
+
+	protected rrChip(riskReward: number | null): ChipConfig {
+		if (riskReward === null) {
+			return { icon: '⚪', label: 'Unavailable', tone: 'neutral' };
+		}
+
+		if (riskReward < 1) {
+			return { icon: '🔴', label: `Very Poor (${riskReward.toFixed(2)})`, tone: 'red' };
+		}
+
+		if (riskReward < 1.5) {
+			return { icon: '🟠', label: `Poor (${riskReward.toFixed(2)})`, tone: 'orange' };
+		}
+
+		if (riskReward < 2) {
+			return { icon: '🟡', label: `Fair (${riskReward.toFixed(2)})`, tone: 'amber' };
+		}
+
+		if (riskReward <= 3) {
+			return { icon: '🟢', label: `Good (${riskReward.toFixed(2)})`, tone: 'green' };
+		}
+
+		return { icon: '⭐', label: `Excellent (${riskReward.toFixed(2)})`, tone: 'green' };
+	}
+
+	protected entryQualityLabel(score: number): string {
+		if (score >= 90) {
+			return `Excellent (${Math.round(score)})`;
+		}
+
+		if (score >= 75) {
+			return `Good (${Math.round(score)})`;
+		}
+
+		if (score >= 60) {
+			return `Fair (${Math.round(score)})`;
+		}
+
+		return `Poor (${Math.round(score)})`;
+	}
+
+	protected whyThisTradeBullets(summary: ScannerResult): readonly string[] {
+		const bullets: string[] = [];
+
+		if (summary.tradeStage === 'EARLY_BREAKDOWN') {
+			bullets.push('✓ Fresh bearish structure below EMA200');
+		} else if (summary.tradeStage === 'PULLBACK_ENTRY') {
+			bullets.push('✓ Pullback toward EMA20 within active bearish trend');
+		} else if (summary.tradeStage === 'TREND_CONTINUATION') {
+			bullets.push('✓ Trend continuation setup remains valid');
+		} else if (summary.tradeStage === 'LATE_TREND') {
+			bullets.push('⚠ Trend is mature; avoid chasing extended moves');
+		} else {
+			bullets.push('⚠ Sideways structure reduces directional confidence');
+		}
+
+		if (summary.trendStrengthScore >= 7) {
+			bullets.push('✓ Strong trend alignment is intact');
+		} else if (summary.trendStrengthScore >= 5) {
+			bullets.push('✓ Trend structure remains acceptable');
+		} else {
+			bullets.push('⚠ Trend strength is currently weak');
+		}
+
+		if (summary.volumeQuality === 'Excellent' || summary.volumeQuality === 'Good') {
+			bullets.push('✓ Volume is above average');
+		} else {
+			bullets.push('⚠ Volume quality is only moderate');
+		}
+
+		if (summary.riskReward !== null && summary.riskReward >= 2) {
+			bullets.push('✓ Risk/reward profile is favorable');
+		} else if (summary.riskReward !== null) {
+			bullets.push('⚠ Risk/reward is only moderate');
+		} else {
+			bullets.push('⚠ Risk/reward is unavailable for this setup');
+		}
+
+		return bullets;
 	}
 
 	protected emptyStateMessage(): string {

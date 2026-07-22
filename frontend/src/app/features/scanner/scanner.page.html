@@ -68,6 +68,11 @@
             <td mat-cell *matCellDef="let row"><vs-scanner-score-badge [score]="row.score" /></td>
           </ng-container>
 
+          <ng-container matColumnDef="entryQuality">
+            <th mat-header-cell *matHeaderCellDef>Entry Quality</th>
+            <td mat-cell *matCellDef="let row"><vs-scanner-score-badge [score]="row.entryQuality" /></td>
+          </ng-container>
+
           <ng-container matColumnDef="priority">
             <th mat-header-cell *matHeaderCellDef>Priority</th>
             <td mat-cell *matCellDef="let row">
@@ -150,172 +155,153 @@
         @if (!selectedSymbol()) {
           <p>Select a candidate row to inspect indicator values.</p>
         } @else if (inspectorData(); as summary) {
-          <dl>
-            <div>
-              <dt>Symbol</dt>
-              <dd>{{ summary.symbol }}</dd>
-            </div>
-            <div>
-              <dt>Interval</dt>
-              <dd>{{ inspectorInterval }}</dd>
-            </div>
-            <div>
-              <dt>Price</dt>
-              <dd>{{ formatNumber(summary.price) }}</dd>
-            </div>
-            <div>
-              <dt>EMA9</dt>
-              <dd>{{ formatNumber(summary.ema9) }}</dd>
-            </div>
-            <div>
-              <dt>EMA20</dt>
-              <dd>{{ formatNumber(summary.ema20) }}</dd>
-            </div>
-            <div>
-              <dt>EMA200</dt>
-              <dd>{{ formatNumber(summary.ema200) }}</dd>
-            </div>
-            <div>
-              <dt>EMA20 Slope</dt>
-              <dd>
-                <vs-scanner-status-chip
-                  [icon]="slopeChip(summary.ema20SlopeCategory).icon"
-                  [label]="slopeChip(summary.ema20SlopeCategory).label"
-                  [tone]="slopeChip(summary.ema20SlopeCategory).tone"
-                />
-                {{ formatSignedPercent(summary.ema20SlopePercent) }}
-              </dd>
-            </div>
-            <div>
-              <dt>EMA200 Slope</dt>
-              <dd>
-                <vs-scanner-status-chip
-                  [icon]="slopeChip(summary.ema200SlopeCategory).icon"
-                  [label]="slopeChip(summary.ema200SlopeCategory).label"
-                  [tone]="slopeChip(summary.ema200SlopeCategory).tone"
-                />
-                {{ formatSignedPercent(summary.ema200SlopePercent) }}
-              </dd>
-            </div>
-            <div>
-              <dt>Trend Strength</dt>
-              <dd>{{ summary.trendStrengthScore }}/10</dd>
-            </div>
-            <div>
-              <dt>Eligibility</dt>
-              <dd>{{ summary.eligible ? 'Eligible' : 'Rejected' }}</dd>
-            </div>
-            <div>
-              <dt>Priority</dt>
-              <dd>
-                <vs-scanner-status-chip
-                  [icon]="priorityChip(summary.priority).icon"
-                  [label]="priorityChip(summary.priority).label"
-                  [tone]="priorityChip(summary.priority).tone"
-                />
-              </dd>
-            </div>
-            <div>
-              <dt>Trade Stage</dt>
-              <dd>
-                <vs-scanner-status-chip
-                  [icon]="tradeStageChip(summary).icon"
-                  [label]="tradeStageChip(summary).label"
-                  [tone]="tradeStageChip(summary).tone"
-                />
-              </dd>
-            </div>
-            <div>
-              <dt>Stage Reason</dt>
-              <dd>{{ summary.tradeStageReason }}</dd>
-            </div>
-            <div>
-              <dt>Sideways</dt>
-              <dd>
-                <vs-scanner-status-chip
-                  [icon]="sidewaysChip(summary.isSideways).icon"
-                  [label]="sidewaysChip(summary.isSideways).label"
-                  [tone]="sidewaysChip(summary.isSideways).tone"
-                />
-              </dd>
-            </div>
-            <div>
-              <dt>Sideways Score</dt>
-              <dd>{{ summary.sidewaysScore }}/100</dd>
-            </div>
-            <div>
-              <dt>Volume Quality</dt>
-              <dd>
-                <vs-scanner-status-chip
-                  [icon]="volumeQualityChip(summary.volumeQuality).icon"
-                  [label]="volumeQualityChip(summary.volumeQuality).label"
-                  [tone]="volumeQualityChip(summary.volumeQuality).tone"
-                />
-              </dd>
-            </div>
-            <div>
-              <dt>Price Efficiency</dt>
-              <dd>{{ summary.priceEfficiency.toFixed(4) }}%/candle</dd>
-            </div>
-            <div>
-              <dt>Distance EMA20</dt>
-              <dd><span [class]="distanceClass(summary.distanceEMA20)">{{ formatDistance(summary.distanceEMA20) }}</span></dd>
-            </div>
-            <div>
-              <dt>Distance EMA200</dt>
-              <dd><span [class]="distanceClass(summary.distanceEMA200)">{{ formatDistance(summary.distanceEMA200) }}</span></dd>
-            </div>
-            <div>
-              <dt>Candles Since EMA200 Cross</dt>
-              <dd>{{ summary.candlesSinceCross }}</dd>
-            </div>
-            <div>
-              <dt>Trend Age</dt>
-              <dd>
-                <vs-scanner-status-chip
-                  [icon]="trendAgeChip(summary.trendAge).icon"
-                  [label]="trendAgeChip(summary.trendAge).label"
-                  [tone]="trendAgeChip(summary.trendAge).tone"
-                />
-              </dd>
-            </div>
-            <div>
-              <dt>Fresh Cross</dt>
-              <dd>
-                <vs-scanner-status-chip
-                  [icon]="freshCrossChip(summary.freshCross).icon"
-                  [label]="freshCrossChip(summary.freshCross).label"
-                  [tone]="freshCrossChip(summary.freshCross).tone"
-                />
-              </dd>
-            </div>
-            <div>
-              <dt>Below EMA200</dt>
-              <dd>{{ summary.belowEMA200 ? 'Yes' : 'No' }}</dd>
-            </div>
-            <div>
-              <dt>Bearish Alignment</dt>
-              <dd>
-                <vs-scanner-status-chip
-                  [icon]="alignmentChip(summary).icon"
-                  [label]="alignmentChip(summary).label"
-                  [tone]="alignmentChip(summary).tone"
-                />
-              </dd>
-            </div>
-            <div>
-              <dt>Trend</dt>
-              <dd><vs-scanner-trend-chip [trend]="summary.trend" /></dd>
-            </div>
-            <div>
-              <dt>Scanner Score</dt>
-              <dd><vs-scanner-score-badge [score]="summary.score" /></dd>
-            </div>
-            <div>
-              <dt>Eligibility Reasons</dt>
-              <dd>{{ summary.eligibilityReasons.length ? summary.eligibilityReasons.join(', ') : 'None' }}</dd>
-            </div>
-          </dl>
+          <div class="inspector-grid">
+            <section class="inspector-section">
+              <h3>Trend Analysis</h3>
+              <h4>Moving Averages</h4>
+              <dl>
+                <div>
+                  <dt>EMA20</dt>
+                  <dd>{{ formatNumber(summary.ema20) }}</dd>
+                </div>
+                <div>
+                  <dt>EMA200</dt>
+                  <dd>{{ formatNumber(summary.ema200) }}</dd>
+                </div>
+              </dl>
+              <h4>Momentum</h4>
+              <dl>
+                <div>
+                  <dt>EMA20 Slope</dt>
+                  <dd>
+                    <vs-scanner-status-chip
+                      [icon]="slopeChip(summary.ema20SlopeCategory).icon"
+                      [label]="slopeChip(summary.ema20SlopeCategory).label"
+                      [tone]="slopeChip(summary.ema20SlopeCategory).tone"
+                    />
+                    {{ formatSignedPercent(summary.ema20SlopePercent) }}
+                  </dd>
+                </div>
+                <div>
+                  <dt>EMA200 Slope</dt>
+                  <dd>
+                    <vs-scanner-status-chip
+                      [icon]="slopeChip(summary.ema200SlopeCategory).icon"
+                      [label]="slopeChip(summary.ema200SlopeCategory).label"
+                      [tone]="slopeChip(summary.ema200SlopeCategory).tone"
+                    />
+                    {{ formatSignedPercent(summary.ema200SlopePercent) }}
+                  </dd>
+                </div>
+              </dl>
+              <h4>Structure</h4>
+              <dl>
+                <div>
+                  <dt>Trend Strength</dt>
+                  <dd>{{ summary.trendStrengthScore }}/10</dd>
+                </div>
+                <div>
+                  <dt>Bearish Alignment</dt>
+                  <dd>
+                    <vs-scanner-status-chip
+                      [icon]="alignmentChip(summary).icon"
+                      [label]="alignmentChip(summary).label"
+                      [tone]="alignmentChip(summary).tone"
+                    />
+                  </dd>
+                </div>
+                <div>
+                  <dt>Sideways Score</dt>
+                  <dd>{{ summary.sidewaysScore }}/100</dd>
+                </div>
+              </dl>
+            </section>
+
+            <section class="inspector-section">
+              <h3>Trade Quality</h3>
+              <dl>
+                <div>
+                  <dt>Volume Quality</dt>
+                  <dd>
+                    <vs-scanner-status-chip
+                      [icon]="volumeQualityChip(summary.volumeQuality).icon"
+                      [label]="volumeQualityChip(summary.volumeQuality).label"
+                      [tone]="volumeQualityChip(summary.volumeQuality).tone"
+                    />
+                  </dd>
+                </div>
+                <div>
+                  <dt>Price Efficiency</dt>
+                  <dd>{{ formatEfficiency(summary.priceEfficiency) }}</dd>
+                </div>
+                <div>
+                  <dt>Distance EMA20</dt>
+                  <dd>
+                    <span [class]="distanceClass(summary.distanceEMA20)">{{ formatDistance(summary.distanceEMA20) }}</span>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Candles Since EMA200 Cross</dt>
+                  <dd>{{ summary.candlesSinceCross }}</dd>
+                </div>
+              </dl>
+            </section>
+
+            <section class="inspector-section trade-plan-card">
+              <h3>Trade Plan</h3>
+              <dl>
+                <div>
+                  <dt>Suggested Entry</dt>
+                  <dd>{{ formatNumber(summary.suggestedEntry) }}</dd>
+                </div>
+                <div>
+                  <dt>Suggested Stop</dt>
+                  <dd>{{ formatNumber(summary.suggestedStopLoss) }}</dd>
+                </div>
+                <div>
+                  <dt>Suggested Target</dt>
+                  <dd>{{ formatNumber(summary.suggestedTakeProfit) }}</dd>
+                </div>
+                <div>
+                  <dt>Risk : Reward Ratio</dt>
+                  <dd>
+                    <vs-scanner-status-chip
+                      [icon]="rrChip(summary.riskReward).icon"
+                      [label]="rrChip(summary.riskReward).label"
+                      [tone]="rrChip(summary.riskReward).tone"
+                    />
+                  </dd>
+                </div>
+                <div>
+                  <dt>Entry Quality</dt>
+                  <dd>{{ entryQualityLabel(summary.entryQuality) }}</dd>
+                </div>
+              </dl>
+            </section>
+
+            <section class="inspector-section">
+              <h3>Why this trade?</h3>
+              <ul>
+                @for (line of whyThisTradeBullets(summary); track line) {
+                  <li>{{ line }}</li>
+                }
+              </ul>
+            </section>
+
+            <section class="inspector-section">
+              <h3>Eligibility</h3>
+              @if (summary.eligible) {
+                <p>✓ Passed all eligibility filters</p>
+              } @else {
+                <p>Rejected because:</p>
+                <ul>
+                  @for (reason of summary.eligibilityReasons; track reason) {
+                    <li>{{ reason }}</li>
+                  }
+                </ul>
+              }
+            </section>
+          </div>
         }
       </section>
     }

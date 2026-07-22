@@ -34,6 +34,12 @@ export interface IndicatorResult {
   readonly tradeStageLabel: string;
   readonly tradeStageColor: 'green' | 'blue' | 'orange' | 'red' | 'neutral';
   readonly tradeStageReason: string;
+  readonly suggestedEntry: number | null;
+  readonly suggestedStopLoss: number | null;
+  readonly suggestedTakeProfit: number | null;
+  readonly riskReward: number | null;
+  readonly entryQuality: number;
+  readonly planningReason: string;
   readonly emaDistanceScore: number;
   readonly trendAgeScore: number;
   readonly alignmentScore: number;

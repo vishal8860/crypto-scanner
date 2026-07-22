@@ -912,3 +912,109 @@ Trade lifecycle context helps decision quality by separating setup timing from r
 ## Version
 
 v0.7.4
+
+---
+
+# Day 8
+
+**Date**  
+22 July 2026
+
+## Objective
+
+Introduce an Entry Quality Engine and convert Market Inspector into a clearer analyst-style trade report.
+
+---
+
+## Completed
+
+✅ Added dedicated backend `EntryPlannerService`
+
+✅ Implemented structured trade plan outputs for eligible candidates:
+
+- `suggestedEntry`
+- `suggestedStopLoss`
+- `suggestedTakeProfit`
+- `riskReward`
+- `entryQuality`
+- `planningReason`
+
+✅ Added stage-aware entry logic:
+
+- Early Breakdown
+- Pullback Entry
+- Trend Continuation with `No Entry` guardrail
+
+✅ Implemented stop loss logic using closest of:
+
+- recent swing high (+ buffer)
+- EMA200 (+ buffer)
+
+✅ Implemented target logic using nearest support placeholder with `2x risk` fallback
+
+✅ Added independent Entry Quality scoring (`0-100`) using:
+
+- RR tiers
+- stage bonus
+- trend strength
+- volume quality
+- sideways penalty
+
+✅ Added `Entry Quality` column to Scanner table
+
+✅ Refactored Market Inspector UI for readability:
+
+- stronger Trade Plan card hierarchy
+- grouped Trend Analysis
+- RR quality badge
+- concise dynamic `Why this trade?` bullet points
+- explicit Eligibility pass/fail messaging
+- standardized numeric formatting (prices/EMA/percentages/RR)
+
+✅ Preserved existing scanner logic and calculations
+
+✅ Backend/frontend builds passed
+
+---
+
+## Engineering Decisions
+
+- Kept entry planning isolated in a dedicated service to avoid coupling with scoring or eligibility engines.
+- Used constants for planning thresholds and RR quality bands for easier future tuning.
+- Treated Inspector refactor as presentation-only so trading logic remains stable.
+
+---
+
+## Lessons Learned
+
+Separating trade planning from scoring improves maintainability while a structured Inspector layout materially improves decision speed.
+
+---
+
+## Next
+
+- Add true swing-high/support detection utilities (replace placeholders).
+- Add unit tests for planner edge cases (`No Entry`, invalid RR, fallback targets).
+- Add optional table indicator for `No Entry` candidates.
+
+---
+
+## Development Score
+
+| Area | Score |
+| --- | --- |
+| Planning | ⭐⭐⭐⭐⭐ |
+| Architecture | ⭐⭐⭐⭐⭐ |
+| Code Quality | ⭐⭐⭐⭐⭐ |
+| Learning | ⭐⭐⭐⭐⭐ |
+| Features | ⭐⭐⭐⭐⭐ |
+
+### Overall
+
+10/10
+
+---
+
+## Version
+
+v0.8.0

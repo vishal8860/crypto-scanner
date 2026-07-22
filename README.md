@@ -249,3 +249,30 @@ interface IndicatorResult {
   - `tradeStageReason`
 - Scanner table includes a new `Trade Stage` column.
 - Market Inspector includes `Trade Stage` and `Stage Reason`.
+
+## Day 8: Entry Quality Engine and Inspector UX Refinement
+
+- Added dedicated backend entry planning service:
+  - `backend/src/modules/indicators/service/entry-planner.service.ts`
+- Trade plan output now includes:
+  - `suggestedEntry`
+  - `suggestedStopLoss`
+  - `suggestedTakeProfit`
+  - `riskReward`
+  - `entryQuality`
+  - `planningReason`
+- Entry planning logic is stage-aware and reusable:
+  - Early Breakdown entry handling
+  - Pullback Entry by EMA9/EMA20 context
+  - Trend Continuation guardrails (`No Entry` conditions)
+  - Stop logic using recent swing high vs EMA200 with buffer
+  - Target logic using nearest support placeholder or `2x` risk fallback
+- Entry Quality scoring is independent from scanner score and clamped to `0..100`.
+- Frontend Scanner table now includes an `Entry Quality` column.
+- Market Inspector now presents a structured analysis report with:
+  - Trend Analysis groups
+  - Trade Quality section
+  - Trade Plan emphasis card
+  - Risk/Reward quality badge
+  - Dynamic `Why this trade?` bullet explanation
+  - Eligibility pass/fail summary

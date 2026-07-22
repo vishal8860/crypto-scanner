@@ -19,6 +19,7 @@ import { calculateEMA } from '../utils/calculate-ema.js';
 import { calculateEMASeries } from '../utils/calculate-ema-series.js';
 import { countCandlesSinceEMA200Cross } from '../utils/count-candles-since-ema200-cross.js';
 import { resolveTrendAge } from '../utils/resolve-trend-age.js';
+import { EntryPlannerService } from './entry-planner.service.js';
 import { TradeEligibilityService } from './trade-eligibility.service.js';
 import { TradeStageService } from './trade-stage.service.js';
 import { TrendScoringService } from './trend-scoring.service.js';
@@ -100,7 +101,8 @@ export class IndicatorsService {
     private readonly candlesService: CandlesService = new CandlesService(),
     private readonly trendScoringService: TrendScoringService = new TrendScoringService(),
     private readonly tradeEligibilityService: TradeEligibilityService = new TradeEligibilityService(),
-    private readonly tradeStageService: TradeStageService = new TradeStageService()
+    private readonly tradeStageService: TradeStageService = new TradeStageService(),
+    private readonly entryPlannerService: EntryPlannerService = new EntryPlannerService()
   ) {}
 
   public async getForMarket(query: IndicatorsQueryDto): Promise<IndicatorsResponseDto> {
@@ -111,6 +113,8 @@ export class IndicatorsService {
     });
 
     const closes = candlesResponse.data.map((candle) => candle.close);
+    const highs = candlesResponse.data.map((candle) => candle.high);
+    const lows = candlesResponse.data.map((candle) => candle.low);
     const volumes = candlesResponse.data.map((candle) => candle.volume);
 
     if (closes.length < EMA_PERIODS.ema200) {
@@ -187,6 +191,20 @@ export class IndicatorsService {
       isBelowEMA200,
       priceEfficiency
     });
+    const plan = this.entryPlannerService.plan({
+      eligible: eligibility.eligible,
+      tradeStage: tradeStageResult.tradeStage,
+      price,
+      ema9,
+      ema20,
+      ema200,
+      distanceFromEMA20Percent,
+      trendStrengthScore: scoreResult.trendStrengthScore,
+      volumeQuality: scoreResult.volumeQuality,
+      sidewaysScore: scoreResult.sidewaysScore,
+      highs,
+      lows
+    });
     const effectiveScore = eligibility.eligible ? scoreResult.scannerScore : 0;
 
     const result: IndicatorResult = {
@@ -212,6 +230,12 @@ export class IndicatorsService {
       tradeStageLabel: tradeStageResult.tradeStageLabel,
       tradeStageColor: tradeStageResult.tradeStageColor,
       tradeStageReason: tradeStageResult.tradeStageReason,
+      suggestedEntry: plan.suggestedEntry === null ? null : roundTo(plan.suggestedEntry, 8),
+      suggestedStopLoss: plan.suggestedStopLoss === null ? null : roundTo(plan.suggestedStopLoss, 8),
+      suggestedTakeProfit: plan.suggestedTakeProfit === null ? null : roundTo(plan.suggestedTakeProfit, 8),
+      riskReward: plan.riskReward === null ? null : roundTo(plan.riskReward, 2),
+      entryQuality: roundTo(plan.entryQuality, 0),
+      planningReason: plan.planningReason,
       emaDistanceScore: roundTo(scoreResult.emaDistanceScore, 2),
       trendAgeScore: roundTo(scoreResult.trendAgeScore, 2),
       alignmentScore: roundTo(scoreResult.alignmentScore, 2),
