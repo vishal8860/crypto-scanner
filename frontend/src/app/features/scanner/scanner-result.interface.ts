@@ -1,4 +1,12 @@
-import { Trend, TrendAge } from './indicator-result.interface';
+import {
+  SlopeCategory,
+  TradePriority,
+  TradeStage,
+  Trend,
+  TrendAge,
+  TrendClassification,
+  VolumeQuality
+} from './indicator-result.interface';
 
 export interface ScannerResult {
   readonly rank: number;
@@ -15,5 +23,30 @@ export interface ScannerResult {
   readonly ema9: number;
   readonly ema20: number;
   readonly ema200: number;
+  readonly ema20SlopePercent: number;
+  readonly ema20SlopeCategory: SlopeCategory;
+  readonly ema200SlopePercent: number;
+  readonly ema200SlopeCategory: SlopeCategory;
+  readonly trendClassification: TrendClassification;
+  readonly trendStrengthScore: number;
+  readonly isSideways: boolean;
+  readonly sidewaysScore: number;
+  readonly volumeQuality: VolumeQuality;
+  readonly eligible: boolean;
+  readonly eligibilityReasons: readonly string[];
+  readonly priority: TradePriority;
+  readonly tradeStage: TradeStage;
+  readonly tradeStageLabel: string;
+  readonly tradeStageColor: 'green' | 'blue' | 'orange' | 'red' | 'neutral';
+  readonly tradeStageReason: string;
+  readonly priceEfficiency: number;
+  readonly emaDistanceScore: number;
+  readonly trendAgeScore: number;
+  readonly alignmentScore: number;
+  readonly slopeScore: number;
+  readonly volumeScore: number;
+  readonly momentumScore: number;
+  readonly sidewaysPenalty: number;
+  readonly finalScore: number;
   readonly distanceEMA20: number;
 }

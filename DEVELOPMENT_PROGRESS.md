@@ -651,3 +651,264 @@ Visual hierarchy dramatically improves scanner usability; traders can parse oppo
 ## Version
 
 v0.6.1
+
+---
+
+# Day 7.2
+
+**Date**  
+22 July 2026
+
+## Objective
+
+Upgrade scanner scoring quality from fixed buckets to a weighted, proportional scoring engine.
+
+---
+
+## Completed
+
+✅ Replaced rule-bucket scoring with weighted component scoring
+
+✅ Added score components:
+
+- `emaDistanceScore`
+- `trendAgeScore`
+- `alignmentScore`
+- `slopeScore`
+- `volumeScore`
+- `momentumScore`
+- `sidewaysPenalty`
+- `finalScore`
+
+✅ Added dedicated backend `TrendScoringService`
+
+✅ Added tuning constants for slope, momentum, volume, and sideways logic
+
+✅ Exposed score component fields through indicator and scanner contracts
+
+✅ Preserved final score clamp between `0` and `100`
+
+✅ Backend/frontend builds passed
+
+---
+
+## Engineering Decisions
+
+- Kept weighted scoring isolated in a dedicated service to avoid bloating `IndicatorsService`.
+- Moved numeric thresholds into constants for rapid strategy tuning without contract rewrites.
+- Preserved existing scanner table structure while expanding debug-ready response fields.
+
+---
+
+## Lessons Learned
+
+Weighted sub-scores reduce false positives better than binary score buckets, especially when sideways penalties are modeled explicitly.
+
+---
+
+## Next
+
+- Introduce eligibility gating before market display.
+- Classify market lifecycle stages beyond numeric score.
+
+---
+
+## Development Score
+
+| Area | Score |
+| --- | --- |
+| Planning | ⭐⭐⭐⭐⭐ |
+| Architecture | ⭐⭐⭐⭐⭐ |
+| Code Quality | ⭐⭐⭐⭐⭐ |
+| Learning | ⭐⭐⭐⭐⭐ |
+| Features | ⭐⭐⭐⭐⭐ |
+
+### Overall
+
+10/10
+
+---
+
+## Version
+
+v0.7.2
+
+---
+
+# Day 7.3
+
+**Date**  
+22 July 2026
+
+## Objective
+
+Convert scanner into an eligibility-first trade candidate filter.
+
+---
+
+## Completed
+
+✅ Added dedicated backend `TradeEligibilityService`
+
+✅ Implemented rule-based eligibility with explicit rejection reasons:
+
+- Above EMA200
+- Trend not bearish
+- Weak trend
+- Insufficient volume
+- Sideways market
+- Trend too old
+- Move already extended
+
+✅ Added priority assignment (`High` / `Medium` / `Low`) for eligible markets
+
+✅ Scanner now keeps both:
+
+- `allResults` (all analyzed markets)
+- `filteredResults` (eligible trade candidates)
+
+✅ Scanner table now excludes rejected markets
+
+✅ Summary block updated to:
+
+- Markets Scanned
+- Eligible
+- Rejected
+- High Priority
+- Medium Priority
+- Low Priority
+
+✅ Added debug fields to scanner model:
+
+- `eligible`
+- `eligibilityReasons`
+- `priority`
+
+✅ Backend/frontend builds passed
+
+---
+
+## Engineering Decisions
+
+- Introduced eligibility as an independent layer after scoring to keep architecture extensible.
+- Preserved full market analysis in memory so future filters can be toggled without rescanning.
+- Kept UI changes minimal and focused on clarity.
+
+---
+
+## Lessons Learned
+
+Eligibility gates improve signal quality more effectively than display-score thresholds alone.
+
+---
+
+## Next
+
+- Add lifecycle stage classification for where the trade sits in trend development.
+
+---
+
+## Development Score
+
+| Area | Score |
+| --- | --- |
+| Planning | ⭐⭐⭐⭐⭐ |
+| Architecture | ⭐⭐⭐⭐⭐ |
+| Code Quality | ⭐⭐⭐⭐⭐ |
+| Learning | ⭐⭐⭐⭐⭐ |
+| Features | ⭐⭐⭐⭐⭐ |
+
+### Overall
+
+10/10
+
+---
+
+## Version
+
+v0.7.3
+
+---
+
+# Day 7.4
+
+**Date**  
+22 July 2026
+
+## Objective
+
+Classify each trade candidate by lifecycle stage for execution context.
+
+---
+
+## Completed
+
+✅ Added dedicated backend `TradeStageService` for stage classification
+
+✅ Added typed `TradeStage` categories:
+
+- `EARLY_BREAKDOWN`
+- `PULLBACK_ENTRY`
+- `TREND_CONTINUATION`
+- `LATE_TREND`
+- `SIDEWAYS`
+
+✅ Added stage metadata in contracts:
+
+- `tradeStage`
+- `tradeStageLabel`
+- `tradeStageColor`
+- `tradeStageReason`
+
+✅ Implemented stage rules using trend strength, sideways score, candles since cross, EMA slope, EMA distance, and price efficiency
+
+✅ Added `Trade Stage` column to scanner table
+
+✅ Added `Trade Stage` + `Stage Reason` to Market Inspector
+
+✅ Preserved existing scoring, eligibility, and ranking behavior
+
+✅ Backend/frontend builds passed
+
+---
+
+## Engineering Decisions
+
+- Kept lifecycle classification in a dedicated service to prevent coupling with scoring logic.
+- Used typed stage outputs to keep frontend rendering deterministic and reusable.
+- Added constants for stage thresholds to support future strategy tuning.
+
+---
+
+## Lessons Learned
+
+Trade lifecycle context helps decision quality by separating setup timing from raw score strength.
+
+---
+
+## Next
+
+- Add stage distribution analytics (counts by stage) above scanner table.
+- Add tests for stage boundary conditions.
+
+---
+
+## Development Score
+
+| Area | Score |
+| --- | --- |
+| Planning | ⭐⭐⭐⭐⭐ |
+| Architecture | ⭐⭐⭐⭐⭐ |
+| Code Quality | ⭐⭐⭐⭐⭐ |
+| Learning | ⭐⭐⭐⭐⭐ |
+| Features | ⭐⭐⭐⭐⭐ |
+
+### Overall
+
+10/10
+
+---
+
+## Version
+
+v0.7.4

@@ -188,3 +188,64 @@ interface IndicatorResult {
   - Below EMA200
 - Row click behavior:
   - Clicking an opportunity row updates Market Inspector from selected `ScannerResult`
+
+## Day 7.2: Weighted Scoring Engine
+
+- Replaced fixed bucket scoring with proportional weighted scoring components:
+  - `emaDistanceScore`
+  - `trendAgeScore`
+  - `alignmentScore`
+  - `slopeScore`
+  - `volumeScore`
+  - `momentumScore`
+  - `sidewaysPenalty`
+  - `finalScore`
+- Final score remains clamped between `0` and `100`.
+- Added dedicated backend scoring service:
+  - `backend/src/modules/indicators/service/trend-scoring.service.ts`
+- Added reusable thresholds/constants in:
+  - `backend/src/modules/indicators/constants/indicator.constants.ts`
+
+## Day 7.3: Eligibility-First Trade Candidate Filter
+
+- Scanner behavior moved from ranking-first to eligibility-first.
+- Added dedicated backend eligibility service:
+  - `backend/src/modules/indicators/service/trade-eligibility.service.ts`
+- Eligibility output now includes:
+  - `eligible`
+  - `eligibilityReasons`
+  - `priority` (`High` | `Medium` | `Low`)
+- Rule-based eligibility checks include:
+  - price must be below EMA200
+  - bearish trend classification only
+  - minimum trend strength
+  - volume quality not poor
+  - sideways score threshold
+  - trend age not old
+  - distance-from-EMA200 not over-extended
+- Only eligible markets are displayed as trade candidates.
+- Scanner summary now shows:
+  - Markets Scanned
+  - Eligible
+  - Rejected
+  - High Priority
+  - Medium Priority
+  - Low Priority
+
+## Day 7.4: Trade Stage Lifecycle Classification
+
+- Added dedicated trade-stage classifier service:
+  - `backend/src/modules/indicators/service/trade-stage.service.ts`
+- Every analyzed market now receives one lifecycle stage:
+  - `EARLY_BREAKDOWN`
+  - `PULLBACK_ENTRY`
+  - `TREND_CONTINUATION`
+  - `LATE_TREND`
+  - `SIDEWAYS`
+- API now exposes stage metadata:
+  - `tradeStage`
+  - `tradeStageLabel`
+  - `tradeStageColor`
+  - `tradeStageReason`
+- Scanner table includes a new `Trade Stage` column.
+- Market Inspector includes `Trade Stage` and `Stage Reason`.

@@ -5,15 +5,23 @@ import { IndicatorsQueryDto } from '../dto/indicators-query.dto.js';
 import { IndicatorsResponseDto } from '../dto/indicators-response.dto.js';
 import {
   EMA_PERIODS,
-  FRESH_CROSS_MAX_CANDLES,
+  EMA200_SLOPE_LOOKBACK,
+  EMA9_SLOPE_LOOKBACK,
+  EMA20_SLOPE_LOOKBACK,
   INDICATOR_CANDLE_LIMIT
 } from '../constants/indicator.constants.js';
-import { IndicatorResult, Trend } from '../interfaces/indicator-result.interface.js';
+import {
+  IndicatorResult,
+  Trend,
+  TrendClassification
+} from '../interfaces/indicator-result.interface.js';
 import { calculateEMA } from '../utils/calculate-ema.js';
 import { calculateEMASeries } from '../utils/calculate-ema-series.js';
-import { calculateScannerScore } from '../utils/calculate-scanner-score.js';
 import { countCandlesSinceEMA200Cross } from '../utils/count-candles-since-ema200-cross.js';
 import { resolveTrendAge } from '../utils/resolve-trend-age.js';
+import { TradeEligibilityService } from './trade-eligibility.service.js';
+import { TradeStageService } from './trade-stage.service.js';
+import { TrendScoringService } from './trend-scoring.service.js';
 
 const roundTo = (value: number, precision: number): number => {
   const factor = 10 ** precision;
@@ -26,6 +34,51 @@ const toPercentageDistance = (price: number, ema: number): number => {
   }
 
   return ((price - ema) / ema) * 100;
+};
+
+const toSlopePercent = (
+  series: readonly (number | null)[],
+  lookback: number,
+  label: string
+): number => {
+  const latestIndex = series.length - 1;
+  const previousIndex = latestIndex - lookback;
+
+  if (previousIndex < 0) {
+    throw new AppError(400, `Not enough data points to calculate ${label}`);
+  }
+
+  const current = series[latestIndex];
+  const previous = series[previousIndex];
+
+  if (current === null || previous === null || current === undefined || previous === undefined) {
+    throw new AppError(400, `Missing EMA values to calculate ${label}`);
+  }
+
+  if (previous === 0) {
+    throw new AppError(500, `Invalid EMA baseline for ${label}`);
+  }
+
+  return ((current - previous) / Math.abs(previous)) * 100;
+};
+
+const resolvePriceEfficiency = (
+  closes: readonly number[],
+  currentPrice: number,
+  candlesSinceEMA200Cross: number
+): number => {
+  const latestIndex = closes.length - 1;
+  const crossIndex = Math.max(0, latestIndex - candlesSinceEMA200Cross);
+  const crossPrice = closes[crossIndex];
+
+  if (crossPrice === undefined || crossPrice === 0) {
+    throw new AppError(400, 'Unable to determine cross price for efficiency');
+  }
+
+  const movePercent = ((crossPrice - currentPrice) / crossPrice) * 100;
+  const candleSpan = Math.max(1, latestIndex - crossIndex);
+
+  return movePercent / candleSpan;
 };
 
 const resolveTrend = (price: number, ema9: number, ema20: number, ema200: number): Trend => {
@@ -43,7 +96,12 @@ const resolveTrend = (price: number, ema9: number, ema20: number, ema200: number
 };
 
 export class IndicatorsService {
-  public constructor(private readonly candlesService: CandlesService = new CandlesService()) {}
+  public constructor(
+    private readonly candlesService: CandlesService = new CandlesService(),
+    private readonly trendScoringService: TrendScoringService = new TrendScoringService(),
+    private readonly tradeEligibilityService: TradeEligibilityService = new TradeEligibilityService(),
+    private readonly tradeStageService: TradeStageService = new TradeStageService()
+  ) {}
 
   public async getForMarket(query: IndicatorsQueryDto): Promise<IndicatorsResponseDto> {
     const candlesResponse = await this.candlesService.list({
@@ -53,6 +111,7 @@ export class IndicatorsService {
     });
 
     const closes = candlesResponse.data.map((candle) => candle.close);
+    const volumes = candlesResponse.data.map((candle) => candle.volume);
 
     if (closes.length < EMA_PERIODS.ema200) {
       throw new AppError(400, 'Not enough candle data to calculate indicators');
@@ -65,24 +124,70 @@ export class IndicatorsService {
     }
 
     const ema9 = calculateEMA(closes, EMA_PERIODS.ema9);
+    const ema9Series = calculateEMASeries(closes, EMA_PERIODS.ema9);
     const ema20 = calculateEMA(closes, EMA_PERIODS.ema20);
     const ema200 = calculateEMA(closes, EMA_PERIODS.ema200);
+    const ema20Series = calculateEMASeries(closes, EMA_PERIODS.ema20);
     const ema200Series = calculateEMASeries(closes, EMA_PERIODS.ema200);
+    const ema9SlopePercent = toSlopePercent(ema9Series, EMA9_SLOPE_LOOKBACK, 'EMA9 slope');
+    const ema20SlopePercent = toSlopePercent(ema20Series, EMA20_SLOPE_LOOKBACK, 'EMA20 slope');
+    const ema200SlopePercent = toSlopePercent(ema200Series, EMA200_SLOPE_LOOKBACK, 'EMA200 slope');
 
     const distanceFromEMA20Percent = toPercentageDistance(price, ema20);
     const distanceFromEMA200Percent = toPercentageDistance(price, ema200);
     const isBelowEMA200 = price < ema200;
     const isBearishAlignment = ema9 < ema20 && ema20 < ema200;
     const candlesSinceEMA200Cross = countCandlesSinceEMA200Cross(closes, ema200Series);
-    const freshCross = candlesSinceEMA200Cross <= FRESH_CROSS_MAX_CANDLES;
+    const freshCross = candlesSinceEMA200Cross <= 3;
     const trendAge = resolveTrendAge(candlesSinceEMA200Cross);
-    const scannerScore = calculateScannerScore({
-      isBelowEMA200,
-      isBearishAlignment,
-      freshCross,
+    const trend = resolveTrend(price, ema9, ema20, ema200);
+    const priceEfficiency = resolvePriceEfficiency(closes, price, candlesSinceEMA200Cross);
+    const scoreResult = this.trendScoringService.score({
+      price,
+      closes,
+      volumes,
+      ema9Series,
+      ema20Series,
+      ema9,
+      ema20,
+      ema200,
+      ema9SlopePercent,
+      ema20SlopePercent,
+      ema200SlopePercent,
       distanceFromEMA200Percent,
-      trendAge
+      candlesSinceEMA200Cross,
+      isBearishAlignment,
+      trend
     });
+    const trendClassification = resolveTrendClassification(
+      trend,
+      scoreResult.trendStrengthScore,
+      isBearishAlignment
+    );
+    const eligibility = this.tradeEligibilityService.evaluate({
+      isBelowEMA200,
+      trendClassification,
+      trendStrengthScore: scoreResult.trendStrengthScore,
+      volumeQuality: scoreResult.volumeQuality,
+      sidewaysScore: scoreResult.sidewaysScore,
+      trendAge,
+      distanceFromEMA200Percent,
+      candlesSinceEMA200Cross
+    });
+    const tradeStageResult = this.tradeStageService.classify({
+      price,
+      ema9,
+      ema20,
+      ema20SlopePercent,
+      distanceFromEMA200Percent,
+      candlesSinceEMA200Cross,
+      isBearishAlignment,
+      trendStrengthScore: scoreResult.trendStrengthScore,
+      sidewaysScore: scoreResult.sidewaysScore,
+      isBelowEMA200,
+      priceEfficiency
+    });
+    const effectiveScore = eligibility.eligible ? scoreResult.scannerScore : 0;
 
     const result: IndicatorResult = {
       symbol: query.symbol,
@@ -90,17 +195,66 @@ export class IndicatorsService {
       ema9: roundTo(ema9, 8),
       ema20: roundTo(ema20, 8),
       ema200: roundTo(ema200, 8),
+      ema20SlopePercent: roundTo(ema20SlopePercent, 4),
+      ema20SlopeCategory: scoreResult.ema20SlopeCategory,
+      ema200SlopePercent: roundTo(ema200SlopePercent, 4),
+      ema200SlopeCategory: scoreResult.ema200SlopeCategory,
+      trendClassification,
+      trendStrengthScore: scoreResult.trendStrengthScore,
+      isSideways: scoreResult.isSideways,
+      sidewaysScore: scoreResult.sidewaysScore,
+      volumeQuality: scoreResult.volumeQuality,
+      priceEfficiency: roundTo(priceEfficiency, 4),
+      eligible: eligibility.eligible,
+      eligibilityReasons: eligibility.reasons,
+      priority: eligibility.priority,
+      tradeStage: tradeStageResult.tradeStage,
+      tradeStageLabel: tradeStageResult.tradeStageLabel,
+      tradeStageColor: tradeStageResult.tradeStageColor,
+      tradeStageReason: tradeStageResult.tradeStageReason,
+      emaDistanceScore: roundTo(scoreResult.emaDistanceScore, 2),
+      trendAgeScore: roundTo(scoreResult.trendAgeScore, 2),
+      alignmentScore: roundTo(scoreResult.alignmentScore, 2),
+      slopeScore: roundTo(scoreResult.slopeScore, 2),
+      volumeScore: roundTo(scoreResult.volumeScore, 2),
+      momentumScore: roundTo(scoreResult.momentumScore, 2),
+      sidewaysPenalty: roundTo(scoreResult.sidewaysPenalty, 2),
+      finalScore: roundTo(effectiveScore, 2),
       distanceFromEMA20Percent: roundTo(distanceFromEMA20Percent, 4),
       distanceFromEMA200Percent: roundTo(distanceFromEMA200Percent, 4),
       isBelowEMA200,
       isBearishAlignment,
-      trend: resolveTrend(price, ema9, ema20, ema200),
+      trend,
       candlesSinceEMA200Cross,
       freshCross,
       trendAge,
-      scannerScore
+      scannerScore: roundTo(effectiveScore, 2)
     };
 
     return { data: result };
   }
 }
+
+const resolveTrendClassification = (
+  trend: Trend,
+  trendStrengthScore: number,
+  isBearishAlignment: boolean
+): TrendClassification => {
+  if (trend === 'Bearish') {
+    if (isBearishAlignment && trendStrengthScore >= 7) {
+      return 'Strong Bearish';
+    }
+
+    return 'Bearish';
+  }
+
+  if (trend === 'Bullish') {
+    if (trendStrengthScore < 5) {
+      return 'Weak Bullish';
+    }
+
+    return 'Bullish';
+  }
+
+  return 'Neutral';
+};

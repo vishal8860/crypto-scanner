@@ -11,6 +11,15 @@ interface ScanProgress {
   readonly total: number;
 }
 
+export interface ScanSummary {
+  readonly marketsScanned: number;
+  readonly eligible: number;
+  readonly rejected: number;
+  readonly highPriority: number;
+  readonly mediumPriority: number;
+  readonly lowPriority: number;
+}
+
 const SCAN_BATCH_SIZE = 8;
 
 const toScannerResult = (indicator: IndicatorResult): ScannerResult => ({
@@ -28,6 +37,31 @@ const toScannerResult = (indicator: IndicatorResult): ScannerResult => ({
   ema9: indicator.ema9,
   ema20: indicator.ema20,
   ema200: indicator.ema200,
+  ema20SlopePercent: indicator.ema20SlopePercent,
+  ema20SlopeCategory: indicator.ema20SlopeCategory,
+  ema200SlopePercent: indicator.ema200SlopePercent,
+  ema200SlopeCategory: indicator.ema200SlopeCategory,
+  trendClassification: indicator.trendClassification,
+  trendStrengthScore: indicator.trendStrengthScore,
+  isSideways: indicator.isSideways,
+  sidewaysScore: indicator.sidewaysScore,
+  volumeQuality: indicator.volumeQuality,
+  eligible: indicator.eligible,
+  eligibilityReasons: [...indicator.eligibilityReasons],
+  priority: indicator.priority,
+  tradeStage: indicator.tradeStage,
+  tradeStageLabel: indicator.tradeStageLabel,
+  tradeStageColor: indicator.tradeStageColor,
+  tradeStageReason: indicator.tradeStageReason,
+  priceEfficiency: indicator.priceEfficiency,
+  emaDistanceScore: indicator.emaDistanceScore,
+  trendAgeScore: indicator.trendAgeScore,
+  alignmentScore: indicator.alignmentScore,
+  slopeScore: indicator.slopeScore,
+  volumeScore: indicator.volumeScore,
+  momentumScore: indicator.momentumScore,
+  sidewaysPenalty: indicator.sidewaysPenalty,
+  finalScore: indicator.finalScore,
   distanceEMA20: indicator.distanceFromEMA20Percent
 });
 
@@ -36,14 +70,41 @@ const rankByScore = (results: readonly ScannerResult[]): readonly ScannerResult[
     .sort((left, right) => right.score - left.score)
     .map((result, index) => ({ ...result, rank: index + 1 }));
 
+const applyOpportunityFilter = (results: readonly ScannerResult[]): {
+  readonly filtered: readonly ScannerResult[];
+  readonly eligibleCount: number;
+  readonly highPriorityCount: number;
+  readonly mediumPriorityCount: number;
+  readonly lowPriorityCount: number;
+} => {
+  const eligible = results.filter((result) => result.eligible);
+  const filtered = rankByScore(eligible);
+  const highPriorityCount = eligible.filter((result) => result.priority === 'High').length;
+  const mediumPriorityCount = eligible.filter((result) => result.priority === 'Medium').length;
+  const lowPriorityCount = eligible.filter((result) => result.priority === 'Low').length;
+
+  return {
+    filtered,
+    eligibleCount: eligible.length,
+    highPriorityCount,
+    mediumPriorityCount,
+    lowPriorityCount
+  };
+};
+
 @Injectable({ providedIn: 'root' })
 export class ScannerEngineService {
-  private readonly opportunitiesState = signal<readonly ScannerResult[]>([]);
+  private readonly allResultsState = signal<readonly ScannerResult[]>([]);
+  private readonly filteredResultsState = signal<readonly ScannerResult[]>([]);
+  private readonly summaryState = signal<ScanSummary | null>(null);
   private readonly scanningState = signal(false);
   private readonly progressState = signal<ScanProgress | null>(null);
   private readonly errorState = signal<string | null>(null);
 
-  public readonly opportunities = this.opportunitiesState.asReadonly();
+  public readonly allResults = this.allResultsState.asReadonly();
+  public readonly filteredResults = this.filteredResultsState.asReadonly();
+  public readonly opportunities = this.filteredResultsState.asReadonly();
+  public readonly summary = this.summaryState.asReadonly();
   public readonly scanning = this.scanningState.asReadonly();
   public readonly progress = this.progressState.asReadonly();
   public readonly error = this.errorState.asReadonly();
@@ -77,7 +138,16 @@ export class ScannerEngineService {
       this.progressState.set({ current: 0, total });
 
       if (total === 0) {
-        this.opportunitiesState.set([]);
+        this.allResultsState.set([]);
+        this.filteredResultsState.set([]);
+        this.summaryState.set({
+          marketsScanned: 0,
+          eligible: 0,
+          rejected: 0,
+          highPriority: 0,
+          mediumPriority: 0,
+          lowPriority: 0
+        });
         return;
       }
 
@@ -98,11 +168,31 @@ export class ScannerEngineService {
         }
       }
 
-      this.opportunitiesState.set(rankByScore(scanned));
+      const rankedAll = rankByScore(scanned);
+      const {
+        filtered,
+        eligibleCount,
+        highPriorityCount,
+        mediumPriorityCount,
+        lowPriorityCount
+      } = applyOpportunityFilter(rankedAll);
+
+      this.allResultsState.set(rankedAll);
+      this.filteredResultsState.set(filtered);
+      this.summaryState.set({
+        marketsScanned: total,
+        eligible: eligibleCount,
+        rejected: total - eligibleCount,
+        highPriority: highPriorityCount,
+        mediumPriority: mediumPriorityCount,
+        lowPriority: lowPriorityCount
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to scan markets';
       this.errorState.set(message);
-      this.opportunitiesState.set([]);
+      this.allResultsState.set([]);
+      this.filteredResultsState.set([]);
+      this.summaryState.set(null);
     } finally {
       this.scanningState.set(false);
       this.progressState.set(null);

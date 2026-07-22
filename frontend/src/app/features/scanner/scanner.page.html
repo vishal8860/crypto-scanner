@@ -1,8 +1,8 @@
 <section class="scanner-page">
   <header class="page-header">
     <div>
-      <h1>Scanner Opportunities</h1>
-      <p>Market-wide bearish opportunity ranking engine.</p>
+      <h1>Trade Candidates</h1>
+      <p>Eligibility-first bearish trade filter for CoinDCX futures.</p>
     </div>
   </header>
 
@@ -21,6 +21,17 @@
     }
   </section>
 
+  @if (scanSummary(); as summary) {
+    <section class="score-legend" aria-label="Scan opportunity summary">
+      <span class="legend-item">Markets Scanned : {{ summary.marketsScanned }}</span>
+      <span class="legend-item">Eligible : {{ summary.eligible }}</span>
+      <span class="legend-item">Rejected : {{ summary.rejected }}</span>
+      <span class="legend-item">High Priority : {{ summary.highPriority }}</span>
+      <span class="legend-item">Medium Priority : {{ summary.mediumPriority }}</span>
+      <span class="legend-item">Low Priority : {{ summary.lowPriority }}</span>
+    </section>
+  }
+
   @if (scanning()) {
     <div class="state-box">
       <mat-spinner diameter="40" />
@@ -37,7 +48,7 @@
   } @else {
     @if (dataSource.filteredData.length === 0) {
       <div class="state-box">
-        <p>No opportunities found for the current search.</p>
+        <p>{{ emptyStateMessage() }}</p>
       </div>
     } @else {
       <div class="table-wrapper">
@@ -55,6 +66,28 @@
           <ng-container matColumnDef="score">
             <th mat-header-cell *matHeaderCellDef>Scanner Score</th>
             <td mat-cell *matCellDef="let row"><vs-scanner-score-badge [score]="row.score" /></td>
+          </ng-container>
+
+          <ng-container matColumnDef="priority">
+            <th mat-header-cell *matHeaderCellDef>Priority</th>
+            <td mat-cell *matCellDef="let row">
+              <vs-scanner-status-chip
+                [icon]="priorityChip(row.priority).icon"
+                [label]="priorityChip(row.priority).label"
+                [tone]="priorityChip(row.priority).tone"
+              />
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="tradeStage">
+            <th mat-header-cell *matHeaderCellDef>Trade Stage</th>
+            <td mat-cell *matCellDef="let row">
+              <vs-scanner-status-chip
+                [icon]="tradeStageChip(row).icon"
+                [label]="tradeStageChip(row).label"
+                [tone]="tradeStageChip(row).tone"
+              />
+            </td>
           </ng-container>
 
           <ng-container matColumnDef="trend">
@@ -115,7 +148,7 @@
         <h2>Market Inspector</h2>
 
         @if (!selectedSymbol()) {
-          <p>Select an opportunity row to inspect indicator values.</p>
+          <p>Select a candidate row to inspect indicator values.</p>
         } @else if (inspectorData(); as summary) {
           <dl>
             <div>
@@ -141,6 +174,88 @@
             <div>
               <dt>EMA200</dt>
               <dd>{{ formatNumber(summary.ema200) }}</dd>
+            </div>
+            <div>
+              <dt>EMA20 Slope</dt>
+              <dd>
+                <vs-scanner-status-chip
+                  [icon]="slopeChip(summary.ema20SlopeCategory).icon"
+                  [label]="slopeChip(summary.ema20SlopeCategory).label"
+                  [tone]="slopeChip(summary.ema20SlopeCategory).tone"
+                />
+                {{ formatSignedPercent(summary.ema20SlopePercent) }}
+              </dd>
+            </div>
+            <div>
+              <dt>EMA200 Slope</dt>
+              <dd>
+                <vs-scanner-status-chip
+                  [icon]="slopeChip(summary.ema200SlopeCategory).icon"
+                  [label]="slopeChip(summary.ema200SlopeCategory).label"
+                  [tone]="slopeChip(summary.ema200SlopeCategory).tone"
+                />
+                {{ formatSignedPercent(summary.ema200SlopePercent) }}
+              </dd>
+            </div>
+            <div>
+              <dt>Trend Strength</dt>
+              <dd>{{ summary.trendStrengthScore }}/10</dd>
+            </div>
+            <div>
+              <dt>Eligibility</dt>
+              <dd>{{ summary.eligible ? 'Eligible' : 'Rejected' }}</dd>
+            </div>
+            <div>
+              <dt>Priority</dt>
+              <dd>
+                <vs-scanner-status-chip
+                  [icon]="priorityChip(summary.priority).icon"
+                  [label]="priorityChip(summary.priority).label"
+                  [tone]="priorityChip(summary.priority).tone"
+                />
+              </dd>
+            </div>
+            <div>
+              <dt>Trade Stage</dt>
+              <dd>
+                <vs-scanner-status-chip
+                  [icon]="tradeStageChip(summary).icon"
+                  [label]="tradeStageChip(summary).label"
+                  [tone]="tradeStageChip(summary).tone"
+                />
+              </dd>
+            </div>
+            <div>
+              <dt>Stage Reason</dt>
+              <dd>{{ summary.tradeStageReason }}</dd>
+            </div>
+            <div>
+              <dt>Sideways</dt>
+              <dd>
+                <vs-scanner-status-chip
+                  [icon]="sidewaysChip(summary.isSideways).icon"
+                  [label]="sidewaysChip(summary.isSideways).label"
+                  [tone]="sidewaysChip(summary.isSideways).tone"
+                />
+              </dd>
+            </div>
+            <div>
+              <dt>Sideways Score</dt>
+              <dd>{{ summary.sidewaysScore }}/100</dd>
+            </div>
+            <div>
+              <dt>Volume Quality</dt>
+              <dd>
+                <vs-scanner-status-chip
+                  [icon]="volumeQualityChip(summary.volumeQuality).icon"
+                  [label]="volumeQualityChip(summary.volumeQuality).label"
+                  [tone]="volumeQualityChip(summary.volumeQuality).tone"
+                />
+              </dd>
+            </div>
+            <div>
+              <dt>Price Efficiency</dt>
+              <dd>{{ summary.priceEfficiency.toFixed(4) }}%/candle</dd>
             </div>
             <div>
               <dt>Distance EMA20</dt>
@@ -195,6 +310,10 @@
             <div>
               <dt>Scanner Score</dt>
               <dd><vs-scanner-score-badge [score]="summary.score" /></dd>
+            </div>
+            <div>
+              <dt>Eligibility Reasons</dt>
+              <dd>{{ summary.eligibilityReasons.length ? summary.eligibilityReasons.join(', ') : 'None' }}</dd>
             </div>
           </dl>
         }

@@ -5,7 +5,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { CandleInterval } from './candle.interface';
-import { TrendAge } from './indicator-result.interface';
+import { SlopeCategory, TrendAge, VolumeQuality } from './indicator-result.interface';
 import { ScannerEngineService } from './scanner-engine.service';
 import { ScannerResult } from './scanner-result.interface';
 import { ScannerScoreBadgeComponent } from './components/scanner-score-badge.component';
@@ -42,6 +42,8 @@ export class ScannerPageComponent implements OnInit {
 		'rank',
 		'symbol',
 		'score',
+		'priority',
+		'tradeStage',
 		'trend',
 		'trendAge',
 		'freshCross',
@@ -54,7 +56,8 @@ export class ScannerPageComponent implements OnInit {
 	protected readonly selectedSymbol = signal<string | null>(null);
 	protected readonly selectedResult = signal<ScannerResult | null>(null);
 
-	protected readonly scanResults = computed(() => this.scannerEngineService.opportunities());
+	protected readonly scanResults = computed(() => this.scannerEngineService.filteredResults());
+	protected readonly scanSummary = computed(() => this.scannerEngineService.summary());
 	protected readonly inspectorData = computed(() => this.selectedResult());
 	protected readonly scanning = computed(() => this.scannerEngineService.scanning());
 	protected readonly scanError = computed(() => this.scannerEngineService.error());
@@ -118,8 +121,20 @@ export class ScannerPageComponent implements OnInit {
 		return value === null ? 'N/A' : `${value.toFixed(3)}%`;
 	}
 
+	protected formatSignedPercent(value: number): string {
+		return `${value >= 0 ? '+' : ''}${value.toFixed(4)}%`;
+	}
+
 	protected formatDistance(value: number): string {
 		return `${value >= 0 ? '+' : ''}${value.toFixed(4)}%`;
+	}
+
+	protected emptyStateMessage(): string {
+		if (this.scanResults().length === 0) {
+			return 'No high-quality bearish opportunities found right now.';
+		}
+
+		return 'No opportunities found for the current search.';
 	}
 
 	protected scoreTier(score: number): ScoreTier {
@@ -184,6 +199,76 @@ export class ScannerPageComponent implements OnInit {
 		}
 
 		return { icon: '⚪', label: 'Mixed Alignment', tone: 'neutral' };
+	}
+
+	protected slopeChip(category: SlopeCategory): ChipConfig {
+		if (category === 'Strong Down') {
+			return { icon: '📉', label: 'Strong Down', tone: 'red' };
+		}
+
+		if (category === 'Moderate Down') {
+			return { icon: '↘️', label: 'Moderate Down', tone: 'orange' };
+		}
+
+		if (category === 'Flat') {
+			return { icon: '➖', label: 'Flat', tone: 'neutral' };
+		}
+
+		return { icon: '↗️', label: 'Rising', tone: 'green' };
+	}
+
+	protected volumeQualityChip(volumeQuality: VolumeQuality): ChipConfig {
+		if (volumeQuality === 'Poor') {
+			return { icon: '🔴', label: 'Poor', tone: 'red' };
+		}
+
+		if (volumeQuality === 'Average') {
+			return { icon: '🟠', label: 'Average', tone: 'orange' };
+		}
+
+		if (volumeQuality === 'Good') {
+			return { icon: '🟢', label: 'Good', tone: 'green' };
+		}
+
+		return { icon: '⭐', label: 'Excellent', tone: 'green' };
+	}
+
+	protected sidewaysChip(isSideways: boolean): ChipConfig {
+		return isSideways
+			? { icon: '⚠️', label: 'Sideways', tone: 'amber' }
+			: { icon: '✅', label: 'Directional', tone: 'green' };
+	}
+
+	protected priorityChip(priority: 'High' | 'Medium' | 'Low'): ChipConfig {
+		if (priority === 'High') {
+			return { icon: '🔥', label: 'High', tone: 'red' };
+		}
+
+		if (priority === 'Medium') {
+			return { icon: '⚡', label: 'Medium', tone: 'orange' };
+		}
+
+		return { icon: '•', label: 'Low', tone: 'neutral' };
+	}
+
+	protected tradeStageChip(result: ScannerResult): ChipConfig {
+		if (result.tradeStageColor === 'green') {
+			return { icon: '🟢', label: result.tradeStageLabel, tone: 'green' };
+		}
+
+		if (result.tradeStageColor === 'blue') {
+			return { icon: '🔵', label: result.tradeStageLabel, tone: 'neutral' };
+		}
+
+		if (result.tradeStageColor === 'orange') {
+			return { icon: '🟠', label: result.tradeStageLabel, tone: 'orange' };
+		}
+
+		if (result.tradeStageColor === 'red') {
+			return { icon: '🔴', label: result.tradeStageLabel, tone: 'red' };
+		}
+
+		return { icon: '⚪', label: result.tradeStageLabel, tone: 'neutral' };
 	}
 
 	protected distanceClass(distance: number): 'distance-green' | 'distance-orange' | 'distance-red' {
