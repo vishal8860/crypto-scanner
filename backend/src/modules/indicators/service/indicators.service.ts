@@ -8,10 +8,14 @@ import {
   EMA200_SLOPE_LOOKBACK,
   EMA9_SLOPE_LOOKBACK,
   EMA20_SLOPE_LOOKBACK,
-  INDICATOR_CANDLE_LIMIT
+  INDICATOR_CANDLE_LIMIT,
+  VERDICT_DEVELOPING_TREND_MIN,
+  VERDICT_READY_ENTRY_MIN,
+  VERDICT_READY_TREND_MIN
 } from '../constants/indicator.constants.js';
 import {
   IndicatorResult,
+  TradeVerdict,
   Trend,
   TrendClassification
 } from '../interfaces/indicator-result.interface.js';
@@ -19,8 +23,10 @@ import { calculateEMA } from '../utils/calculate-ema.js';
 import { calculateEMASeries } from '../utils/calculate-ema-series.js';
 import { countCandlesSinceEMA200Cross } from '../utils/count-candles-since-ema200-cross.js';
 import { resolveTrendAge } from '../utils/resolve-trend-age.js';
+import { EntryScoreService } from './entry-score.service.js';
 import { EntryPlannerService } from './entry-planner.service.js';
 import { TradeEligibilityService } from './trade-eligibility.service.js';
+import { TrendScoreService } from './trend-score.service.js';
 import { TradeStageService } from './trade-stage.service.js';
 import { TrendScoringService } from './trend-scoring.service.js';
 
@@ -100,6 +106,8 @@ export class IndicatorsService {
   public constructor(
     private readonly candlesService: CandlesService = new CandlesService(),
     private readonly trendScoringService: TrendScoringService = new TrendScoringService(),
+    private readonly trendScoreService: TrendScoreService = new TrendScoreService(),
+    private readonly entryScoreService: EntryScoreService = new EntryScoreService(),
     private readonly tradeEligibilityService: TradeEligibilityService = new TradeEligibilityService(),
     private readonly tradeStageService: TradeStageService = new TradeStageService(),
     private readonly entryPlannerService: EntryPlannerService = new EntryPlannerService()
@@ -205,7 +213,27 @@ export class IndicatorsService {
       highs,
       lows
     });
-    const effectiveScore = eligibility.eligible ? scoreResult.scannerScore : 0;
+    const trendScoreResult = this.trendScoreService.score({
+      emaDistanceScore: scoreResult.emaDistanceScore,
+      alignmentScore: scoreResult.alignmentScore,
+      trendStrengthScore: scoreResult.trendStrengthScore,
+      volumeQuality: scoreResult.volumeQuality,
+      sidewaysScore: scoreResult.sidewaysScore,
+      freshCross,
+      trendAge,
+      momentumScore: scoreResult.momentumScore,
+      isBelowEMA200
+    });
+    const entryScoreResult = this.entryScoreService.score({
+      tradeStage: tradeStageResult.tradeStage,
+      distanceFromEMA20Percent,
+      riskReward: plan.riskReward,
+      suggestedEntry: plan.suggestedEntry,
+      suggestedTakeProfit: plan.suggestedTakeProfit,
+      price
+    });
+    const tradeVerdict = resolveTradeVerdict(trendScoreResult.trendScore, entryScoreResult.entryScore);
+    const effectiveScore = eligibility.eligible ? trendScoreResult.trendScore : 0;
 
     const result: IndicatorResult = {
       symbol: query.symbol,
@@ -236,6 +264,11 @@ export class IndicatorsService {
       riskReward: plan.riskReward === null ? null : roundTo(plan.riskReward, 2),
       entryQuality: roundTo(plan.entryQuality, 0),
       planningReason: plan.planningReason,
+      trendScore: roundTo(trendScoreResult.trendScore, 2),
+      trendGrade: trendScoreResult.trendGrade,
+      entryScore: roundTo(entryScoreResult.entryScore, 2),
+      entryGrade: entryScoreResult.entryGrade,
+      tradeVerdict,
       emaDistanceScore: roundTo(scoreResult.emaDistanceScore, 2),
       trendAgeScore: roundTo(scoreResult.trendAgeScore, 2),
       alignmentScore: roundTo(scoreResult.alignmentScore, 2),
@@ -281,4 +314,20 @@ const resolveTrendClassification = (
   }
 
   return 'Neutral';
+};
+
+const resolveTradeVerdict = (trendScore: number, entryScore: number): TradeVerdict => {
+  if (trendScore >= VERDICT_READY_TREND_MIN) {
+    if (entryScore >= VERDICT_READY_ENTRY_MIN) {
+      return 'READY';
+    }
+
+    return 'WATCH';
+  }
+
+  if (trendScore >= VERDICT_DEVELOPING_TREND_MIN) {
+    return 'DEVELOPING';
+  }
+
+  return 'IGNORE';
 };

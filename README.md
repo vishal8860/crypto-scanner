@@ -1,6 +1,6 @@
 # Vishal Scanner
 
-Production-oriented architecture for a CoinDCX Futures market scanner. This repository deliberately contains **no trading, market-scanning, signal-generation, or technical-analysis logic**.
+Production-oriented architecture for a CoinDCX Futures trade scanner with modular indicator, scoring, eligibility, stage, and planning engines.
 
 ## Stack
 
@@ -276,3 +276,38 @@ interface IndicatorResult {
   - Risk/Reward quality badge
   - Dynamic `Why this trade?` bullet explanation
   - Eligibility pass/fail summary
+
+## Day 8.1: Split Market Quality and Entry Quality
+
+- Added independent scoring outputs in backend indicator response:
+  - `trendScore`
+  - `trendGrade`
+  - `entryScore`
+  - `entryGrade`
+  - `tradeVerdict` (`READY` / `WATCH` / `DEVELOPING` / `IGNORE`)
+- Scanner table now uses:
+  - `Trend Score`
+  - `Entry Score`
+  - `Verdict`
+- Ranking semantics remain market-quality first:
+  - primary table score maps to `trendScore`
+- Existing engines remain intact:
+  - weighted trend scoring
+  - eligibility filter
+  - trade stage classification
+  - entry planner
+
+## Day 8.2: Trade Analysis UI/UX Refactor
+
+- Renamed details panel from `Market Inspector` to `Trade Analysis`
+- Replaced duplicated value dump with explainable cards:
+  - `Trend Score Breakdown`
+  - `Entry Score Breakdown`
+  - `Trade Plan`
+  - `Why this trade?`
+  - `What prevents a higher score?`
+- Added score-contribution rows and totals for trend and entry cards
+- Added positive-only strengths list (max 5 points)
+- Added blockers list with empty-state guidance when no blockers are present
+- Kept all backend algorithms and frontend scan/ranking/filtering logic unchanged
+- Preserved existing visual language while improving responsive card readability

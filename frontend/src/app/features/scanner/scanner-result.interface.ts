@@ -1,7 +1,10 @@
 import {
   SlopeCategory,
+  EntryGrade,
+  TradeVerdict,
   TradePriority,
   TradeStage,
+  TrendGrade,
   Trend,
   TrendAge,
   TrendClassification,
@@ -45,6 +48,11 @@ export interface ScannerResult {
   readonly riskReward: number | null;
   readonly entryQuality: number;
   readonly planningReason: string;
+  readonly trendScore: number;
+  readonly trendGrade: TrendGrade;
+  readonly entryScore: number;
+  readonly entryGrade: EntryGrade;
+  readonly tradeVerdict: TradeVerdict;
   readonly priceEfficiency: number;
   readonly emaDistanceScore: number;
   readonly trendAgeScore: number;

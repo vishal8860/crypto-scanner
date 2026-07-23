@@ -1018,3 +1018,180 @@ Separating trade planning from scoring improves maintainability while a structur
 ## Version
 
 v0.8.0
+
+---
+
+# Day 8.1
+
+**Date**  
+23 July 2026
+
+## Objective
+
+Separate market quality from entry timing quality while preserving existing scanner behavior.
+
+---
+
+## Completed
+
+✅ Added independent trend scoring output fields:
+
+- `trendScore`
+- `trendGrade`
+
+✅ Added independent entry scoring output fields:
+
+- `entryScore`
+- `entryGrade`
+
+✅ Added final verdict output:
+
+- `tradeVerdict` (`READY` / `WATCH` / `DEVELOPING` / `IGNORE`)
+
+✅ Updated scanner table semantics to show:
+
+- `Trend Score`
+- `Entry Score`
+- `Verdict`
+
+✅ Preserved all existing engines and rules:
+
+- weighted scoring
+- eligibility filtering
+- stage classification
+- priority logic
+- entry planning
+
+✅ Backend/frontend builds passed
+
+---
+
+## Engineering Decisions
+
+- Kept the new split scores additive to existing contracts instead of replacing older fields to avoid regressions.
+- Preserved ranking behavior by mapping table score to market-quality (`trendScore`).
+- Kept verdict computation centralized in backend orchestration for deterministic frontend rendering.
+
+---
+
+## Lessons Learned
+
+Separating trend quality from entry timing improves explainability and reduces ambiguity in scanner decisions.
+
+---
+
+## Next
+
+- Convert inspector from value-dump format into explainable trade analysis cards.
+- Keep all calculations unchanged during UX refactor.
+
+---
+
+## Development Score
+
+| Area | Score |
+| --- | --- |
+| Planning | ⭐⭐⭐⭐⭐ |
+| Architecture | ⭐⭐⭐⭐⭐ |
+| Code Quality | ⭐⭐⭐⭐⭐ |
+| Learning | ⭐⭐⭐⭐⭐ |
+| Features | ⭐⭐⭐⭐⭐ |
+
+### Overall
+
+10/10
+
+---
+
+## Version
+
+v0.8.1
+
+---
+
+# Day 8.2
+
+**Date**  
+23 July 2026
+
+## Objective
+
+Refactor scanner details panel into explainable Trade Analysis without changing any backend or scoring logic.
+
+---
+
+## Completed
+
+✅ Renamed details panel from `Market Inspector` to `Trade Analysis`
+
+✅ Removed duplicated detail fields already visible in selected row context
+
+✅ Replaced prior analysis sections with score-explainer cards:
+
+- `Trend Score Breakdown`
+- `Entry Score Breakdown`
+
+✅ Added `Why this trade?` strengths card:
+
+- positive-only bullet list
+- capped to 5 bullets
+
+✅ Added `What prevents a higher score?` blockers card:
+
+- warning bullet list
+- capped to 5 bullets
+- explicit no-blocker empty state
+
+✅ Improved `Trade Plan` card formatting:
+
+- Suggested Entry
+- Stop Loss
+- Target
+- Risk : Reward
+
+✅ Upgraded panel layout with responsive CSS Grid card composition
+
+✅ Frontend build passed
+
+---
+
+## Engineering Decisions
+
+- Kept the refactor strictly presentation-layer (`scanner.page.ts/html/scss`) to prevent strategy drift.
+- Reused existing chip and score badge components for visual consistency.
+- Used deterministic helper mapping from existing fields for contribution and reason lines.
+
+---
+
+## Lessons Learned
+
+Traders act faster when the UI explains score causality and blockers directly, instead of repeating raw metrics.
+
+---
+
+## Next
+
+- Add compact/expanded toggle for Trade Analysis cards.
+- Add snapshot tests for card rendering states.
+
+---
+
+## Development Score
+
+| Area | Score |
+| --- | --- |
+| Planning | ⭐⭐⭐⭐⭐ |
+| Architecture | ⭐⭐⭐⭐⭐ |
+| Code Quality | ⭐⭐⭐⭐⭐ |
+| Learning | ⭐⭐⭐⭐⭐ |
+| Features | ⭐⭐⭐⭐⭐ |
+
+### Overall
+
+10/10
+
+---
+
+## Version
+
+v0.8.2

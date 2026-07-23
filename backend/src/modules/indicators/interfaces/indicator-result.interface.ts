@@ -10,6 +10,9 @@ export type TradeStage =
   | 'TREND_CONTINUATION'
   | 'LATE_TREND'
   | 'SIDEWAYS';
+export type TrendGrade = 'Excellent' | 'Good' | 'Average' | 'Poor';
+export type EntryGrade = 'Ready' | 'Watch' | 'Developing' | 'Poor';
+export type TradeVerdict = 'READY' | 'WATCH' | 'DEVELOPING' | 'IGNORE';
 
 export interface IndicatorResult {
   readonly symbol: string;
@@ -40,6 +43,11 @@ export interface IndicatorResult {
   readonly riskReward: number | null;
   readonly entryQuality: number;
   readonly planningReason: string;
+  readonly trendScore: number;
+  readonly trendGrade: TrendGrade;
+  readonly entryScore: number;
+  readonly entryGrade: EntryGrade;
+  readonly tradeVerdict: TradeVerdict;
   readonly emaDistanceScore: number;
   readonly trendAgeScore: number;
   readonly alignmentScore: number;

@@ -108,3 +108,15 @@ export const ENTRY_QUALITY_MIN = 0;
 export const ENTRY_QUALITY_RR_HIGH = 3;
 export const ENTRY_QUALITY_RR_MEDIUM = 2;
 export const ENTRY_QUALITY_RR_LOW = 1.5;
+
+export const TREND_SCORE_EXCELLENT_MIN = 85;
+export const TREND_SCORE_GOOD_MIN = 70;
+export const TREND_SCORE_AVERAGE_MIN = 55;
+
+export const ENTRY_SCORE_READY_MIN = 80;
+export const ENTRY_SCORE_WATCH_MIN = 65;
+export const ENTRY_SCORE_DEVELOPING_MIN = 50;
+
+export const VERDICT_READY_TREND_MIN = 85;
+export const VERDICT_READY_ENTRY_MIN = 80;
+export const VERDICT_DEVELOPING_TREND_MIN = 70;

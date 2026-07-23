@@ -182,9 +182,58 @@ table {
   color: rgba(0, 0, 0, 0.82);
 }
 
+.inspector-section p + p {
+  margin-top: 0.35rem;
+}
+
 .inspector-section ul {
   margin: 0.4rem 0 0;
   padding-left: 1rem;
+}
+
+.breakdown-list {
+  margin: 0;
+  display: grid;
+  gap: 0.52rem;
+}
+
+.breakdown-list > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.breakdown-list dt {
+  margin: 0;
+}
+
+.breakdown-list dd {
+  margin: 0;
+  font-weight: 700;
+  color: #1b5e20;
+}
+
+.breakdown-list dd.negative {
+  color: var(--distance-red);
+}
+
+.breakdown-total {
+  margin-top: 0.7rem;
+  padding-top: 0.65rem;
+  border-top: 1px dashed rgba(0, 0, 0, 0.25);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.breakdown-total span {
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.breakdown-total strong {
+  font-size: 1.08rem;
 }
 
 .trade-plan-card {
@@ -197,8 +246,26 @@ table {
   font-size: 1.08rem;
 }
 
-.trade-plan-card dl {
-  gap: 1rem;
+.trade-plan-list {
+  margin: 0;
+  display: grid;
+  gap: 0.62rem;
+}
+
+.trade-plan-list > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.trade-plan-list dt {
+  margin: 0;
+}
+
+.trade-plan-list dd {
+  margin: 0;
+  font-weight: 600;
 }
 
 .debug-panel dl {
