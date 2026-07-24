@@ -1,1 +1,122 @@
-<h1>Dashboard</h1>
+<section class="performance-page">
+	<header class="page-header">
+		<div>
+			<h1>Performance Dashboard</h1>
+			<p>Historical trade performance intelligence across scanner versions.</p>
+		</div>
+		<button type="button" (click)="reload()" [disabled]="loading()">{{ loading() ? 'Refreshing...' : 'Refresh' }}</button>
+	</header>
+
+	@if (error(); as errorMessage) {
+		<section class="state-card error">{{ errorMessage }}</section>
+	} @else if (loading() && !metrics()) {
+		<section class="state-card">Loading performance data...</section>
+	} @else if (metrics(); as metrics) {
+		<section class="kpi-grid">
+			<article class="kpi-card"><h2>Total Trades</h2><p>{{ metrics.totalTrades }}</p></article>
+			<article class="kpi-card"><h2>Win Rate</h2><p>{{ formatPercent(metrics.winRate) }}</p></article>
+			<article class="kpi-card"><h2>Average R</h2><p>{{ formatR(metrics.averageR) }}</p></article>
+			<article class="kpi-card"><h2>Average Winner</h2><p>{{ formatR(metrics.averageWinner) }}</p></article>
+			<article class="kpi-card"><h2>Average Loser</h2><p>{{ formatR(metrics.averageLoser) }}</p></article>
+			<article class="kpi-card"><h2>Profit Factor</h2><p>{{ metrics.profitFactor.toFixed(2) }}</p></article>
+			<article class="kpi-card"><h2>Avg Holding Time</h2><p>{{ metrics.averageHoldingTimeMinutes.toFixed(2) }} min</p></article>
+			<article class="kpi-card"><h2>Longest Win Streak</h2><p>{{ metrics.longestWinningStreak }}</p></article>
+			<article class="kpi-card"><h2>Longest Loss Streak</h2><p>{{ metrics.longestLosingStreak }}</p></article>
+		</section>
+
+		@if (breakdowns(); as breakdowns) {
+			<section class="tables-grid">
+				@for (entry of breakdownEntries(breakdowns); track entry.title) {
+					<article class="table-card">
+						<h3>{{ entry.title }}</h3>
+						<div class="table-wrapper">
+							<table>
+								<thead>
+									<tr>
+										<th>Bucket</th>
+										<th>Trades</th>
+										<th>Wins</th>
+										<th>Losses</th>
+										<th>Win Rate</th>
+										<th>Average R</th>
+									</tr>
+								</thead>
+								<tbody>
+									@for (row of entry.rows; track row.bucket) {
+										<tr>
+											<td>{{ row.bucket }}</td>
+											<td>{{ row.trades }}</td>
+											<td>{{ row.wins }}</td>
+											<td>{{ row.losses }}</td>
+											<td>{{ formatPercent(row.winRate) }}</td>
+											<td>{{ formatR(row.averageR) }}</td>
+										</tr>
+									}
+								</tbody>
+							</table>
+						</div>
+					</article>
+				}
+			</section>
+		}
+
+		<section class="heatmap-card">
+			<h3>Trend vs Entry Heatmap</h3>
+			<div class="table-wrapper">
+				<table>
+					<thead>
+						<tr>
+							<th>Trend \ Entry</th>
+							@for (entryGrade of entryGrades; track entryGrade) {
+								<th>{{ entryGrade }}</th>
+							}
+						</tr>
+					</thead>
+					<tbody>
+						@for (trendGrade of trendGrades; track trendGrade) {
+							<tr>
+								<th>{{ trendGrade }}</th>
+								@for (entryGrade of entryGrades; track entryGrade) {
+									@let cell = heatmapCell(trendGrade, entryGrade);
+									<td>
+										<div class="cell-stat">Trades: {{ cell.trades }}</div>
+										<div class="cell-stat">Win: {{ formatPercent(cell.winRate) }}</div>
+										<div class="cell-stat">AvgR: {{ formatR(cell.averageR) }}</div>
+									</td>
+								}
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		</section>
+
+		<section class="table-card">
+			<h3>Scanner Version Comparison</h3>
+			<div class="table-wrapper">
+				<table>
+					<thead>
+						<tr>
+							<th>Version</th>
+							<th>Total Trades</th>
+							<th>Win Rate</th>
+							<th>Average R</th>
+							<th>Profit Factor</th>
+						</tr>
+					</thead>
+					<tbody>
+						@for (version of versionComparison(); track version.scannerVersion) {
+							<tr>
+								<td>{{ version.scannerVersion }}</td>
+								<td>{{ version.totalTrades }}</td>
+								<td>{{ formatPercent(version.winRate) }}</td>
+								<td>{{ formatR(version.averageR) }}</td>
+								<td>{{ version.profitFactor.toFixed(2) }}</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		</section>
+	}
+</section>

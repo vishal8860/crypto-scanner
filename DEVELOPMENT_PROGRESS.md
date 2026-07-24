@@ -1412,3 +1412,217 @@ Execution quality improves when scanners provide clear in-trade actions, not jus
 ## Version
 
 v0.10.0
+
+---
+
+# Day 11
+
+**Date**  
+24 July 2026
+
+## Objective
+
+Transform scanner into a self-improving system by recording completed trades and measuring historical performance quality.
+
+---
+
+## Completed
+
+✅ Added new backend `performance` module with dedicated architecture:
+
+- `trade-history.interface.ts`
+- `trade-history.repository.ts`
+- `performance.service.ts`
+- `performance.router.ts`
+
+✅ Added Trade History model for completed trades including:
+
+- symbol/time/direction
+- trend/entry/decision grades
+- trade stage / trend age / volume quality
+- RR at entry / entry-stop-target / exit details
+- holding time / P&L % / P&L R / win-loss
+- scanner version for historical comparison
+
+✅ Added Performance Dashboard metrics:
+
+- total trades
+- win rate
+- average R
+- average winner
+- average loser
+- profit factor
+- average holding time
+- longest winning streak
+- longest losing streak
+
+✅ Added performance breakdowns for:
+
+- decision grade
+- trend grade
+- entry grade
+- trade stage
+- trend age
+- volume quality
+
+✅ Added Trend vs Entry heatmap:
+
+- rows: trend grade (Excellent/Good/Average/Poor)
+- columns: entry grade (Ready/Watch/Developing/Poor)
+- each cell: trades, win rate, average R
+
+✅ Added Indicator Validation page for:
+
+- trend age validation
+- volume quality validation
+- EMA distance buckets
+- pullback quality buckets
+- risk/reward buckets
+
+✅ Added scanner version comparison support in backend and dashboard
+
+✅ Backend/frontend builds passed
+
+---
+
+## Engineering Decisions
+
+- Used repository + service separation for maintainability and storage adapter replacement.
+- Kept response contracts strongly typed to support scaling to thousands of rows.
+- Exposed analytics through dedicated APIs so frontend remains presentation-focused.
+
+---
+
+## Lessons Learned
+
+Performance analytics converts scanner output from static signals into iterative strategy intelligence.
+
+---
+
+## Next
+
+- Add pagination/filters for large trade-history lists.
+- Add seeded sample data command for easier dashboard demos.
+
+---
+
+## Development Score
+
+| Area | Score |
+| --- | --- |
+| Planning | ⭐⭐⭐⭐⭐ |
+| Architecture | ⭐⭐⭐⭐⭐ |
+| Code Quality | ⭐⭐⭐⭐⭐ |
+| Learning | ⭐⭐⭐⭐⭐ |
+| Features | ⭐⭐⭐⭐⭐ |
+
+### Overall
+
+10/10
+
+---
+
+## Version
+
+v0.11.0
+
+---
+
+# Day 11.1
+
+**Date**  
+24 July 2026
+
+## Objective
+
+Reduce false positives by refactoring the decision engine from additive scoring to a professional gated decision hierarchy.
+
+---
+
+## Completed
+
+✅ Refactored trade decision flow into gated phases:
+
+- Trend Qualification
+- Entry Qualification
+- Hard Blockers override
+- Positive Boosters
+- Decision Matrix
+- Transparent explanation lines
+
+✅ Added trend qualification immediate-reject conditions:
+
+- price above EMA200
+- bearish alignment failure
+- EMA20 slope positive
+- trend strength below threshold
+- sideways market classification
+
+✅ Added hard blockers that force `AVOID`:
+
+- RR below configured minimum
+- extension beyond configured threshold
+- poor volume
+- old trend
+- excessive EMA200 distance
+
+✅ Added independent booster contributions:
+
+- fresh trend
+- perfect pullback
+- excellent volume
+- high trend strength
+- directional movement
+- price near EMA20
+- healthy EMA spacing
+
+✅ Implemented matrix-based verdict mapping for final decision quality
+
+✅ Moved decision thresholds into centralized `indicator.constants.ts`
+
+✅ Kept Trend Score and Entry Score calculations unchanged
+
+✅ Backend/frontend builds passed
+
+---
+
+## Engineering Decisions
+
+- Designed blockers as non-negotiable overrides to prevent high-score false positives.
+- Preserved existing decision output contract so UI did not require redesign.
+- Centralized threshold tuning to constants for rapid strategy iteration.
+
+---
+
+## Lessons Learned
+
+Gated decision hierarchy behaves closer to discretionary trading discipline than pure additive scoring.
+
+---
+
+## Next
+
+- Add decision-engine unit tests for gate/blocker/matrix boundaries.
+- Introduce scenario regression fixtures to guard against future false-positive drift.
+
+---
+
+## Development Score
+
+| Area | Score |
+| --- | --- |
+| Planning | ⭐⭐⭐⭐⭐ |
+| Architecture | ⭐⭐⭐⭐⭐ |
+| Code Quality | ⭐⭐⭐⭐⭐ |
+| Learning | ⭐⭐⭐⭐⭐ |
+| Features | ⭐⭐⭐⭐⭐ |
+
+### Overall
+
+10/10
+
+---
+
+## Version
+
+v0.11.1

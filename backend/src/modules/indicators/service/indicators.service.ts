@@ -245,7 +245,14 @@ export class IndicatorsService {
       distanceFromEMA20Percent,
       distanceFromEMA200Percent,
       trendStrengthScore: scoreResult.trendStrengthScore,
-      freshCross
+      freshCross,
+      trendAge,
+      candlesSinceEMA200Cross,
+      isBelowEMA200,
+      isBearishAlignment,
+      ema20SlopePercent,
+      isSideways: scoreResult.isSideways,
+      sidewaysScore: scoreResult.sidewaysScore
     });
     const tradeManagementResult = this.tradeManagementService.evaluate({
       eligible: eligibility.eligible,

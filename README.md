@@ -371,3 +371,60 @@ interface IndicatorResult {
   - Professional summary block
 - Management logic is structured to support future live price refresh without architecture changes.
 - Existing trend score, entry score, eligibility, stage, priority, filtering, and decision layers are preserved.
+
+## Day 11: Performance Intelligence Engine
+
+- Added a full historical trade recording and analytics module:
+  - backend module: `backend/src/modules/performance/`
+  - persistent repository: `trade-history.repository.ts` (file-backed, replaceable adapter)
+  - analytics service: `performance.service.ts`
+  - API router: `performance.router.ts`
+- Trade history model now stores completed trades with execution and context metadata:
+  - symbol/time/direction
+  - trend + entry + decision grades
+  - stage / trend age / volume quality
+  - risk-reward, entry/stop/target/exit, holding time
+  - P&L (% and R), win/loss, exit reason
+  - scanner version for version-over-version analysis
+- New Performance Dashboard capabilities:
+  - total trades
+  - win rate
+  - average R
+  - average winner
+  - average loser
+  - profit factor
+  - average holding time
+  - longest winning streak
+  - longest losing streak
+- Added breakdown tables for:
+  - decision grade
+  - trend grade
+  - entry grade
+  - trade stage
+  - trend age
+  - volume quality
+- Added Trend vs Entry heatmap with:
+  - trades count
+  - win rate
+  - average R
+- Added Indicator Validation page with historical validation for:
+  - trend age
+  - volume quality
+  - EMA distance buckets
+  - pullback quality buckets
+  - risk/reward buckets
+- Added version comparison endpoint and dashboard section to compare performance across scanner versions.
+
+## Day 11.1: Smarter Decision Engine (False Positive Reduction)
+
+- Refactored trade decision logic to a gated hierarchy instead of additive-only scoring.
+- New decision flow:
+  - Step 1: Trend Qualification gate
+  - Step 2: Entry Qualification (`READY`, `WATCH`, `DEVELOPING`, `POOR`)
+  - Step 3: Hard Blockers override (`AVOID`)
+  - Step 4: Positive Boosters
+  - Step 5: Decision Matrix mapping to final verdict
+  - Step 6: Transparent explanation lines (`blocked because`, `positive factor`)
+- Hard blockers now always override boosters/scores.
+- All thresholds moved into centralized indicator constants (no hardcoded decision thresholds in service).
+- Trend Score and Entry Score calculations are unchanged; only final decision production was improved.

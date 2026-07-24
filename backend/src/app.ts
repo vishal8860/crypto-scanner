@@ -6,6 +6,7 @@ import { environment } from './config/environment.js';
 import { createCandlesRouter } from './modules/candles/controller/candles.controller.js';
 import { createIndicatorsRouter } from './modules/indicators/controller/indicators.controller.js';
 import { createMarketsRouter } from './modules/markets/markets.router.js';
+import { createPerformanceRouter } from './modules/performance/performance.router.js';
 import { createScannerRouter } from './modules/scanner/scanner.router.js';
 
 export const createApp = (): Express => {
@@ -26,12 +27,15 @@ export const createApp = (): Express => {
 	const marketsRouter = createMarketsRouter();
 	const candlesRouter = createCandlesRouter();
 	const indicatorsRouter = createIndicatorsRouter();
+	const performanceRouter = createPerformanceRouter();
 	app.use('/api/markets', marketsRouter);
 	app.use('/api/v1/markets', marketsRouter);
 	app.use('/api/candles', candlesRouter);
 	app.use('/api/v1/candles', candlesRouter);
 	app.use('/api/indicators', indicatorsRouter);
 	app.use('/api/v1/indicators', indicatorsRouter);
+	app.use('/api/performance', performanceRouter);
+	app.use('/api/v1/performance', performanceRouter);
 	app.use('/api/v1/scanner', createScannerRouter());
 	app.use(errorMiddleware);
 

@@ -16,6 +16,7 @@ export class AppShellComponent {
 	protected readonly navigation = [
 		{ path: '/dashboard', label: 'Dashboard' },
 		{ path: '/scanner', label: 'Scanner' },
+		{ path: '/indicator-validation', label: 'Indicator Validation' },
 		{ path: '/watchlist', label: 'Watchlist' },
 		{ path: '/journal', label: 'Journal' },
 		{ path: '/settings', label: 'Settings' }

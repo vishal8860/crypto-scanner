@@ -1,0 +1,49 @@
+<section class="validation-page">
+  <header class="page-header">
+    <div>
+      <h1>Indicator Validation</h1>
+      <p>Historical effectiveness of trend age, volume, EMA distance, pullback quality, and risk/reward buckets.</p>
+    </div>
+    <button type="button" (click)="reload()" [disabled]="loading()">{{ loading() ? 'Refreshing...' : 'Refresh' }}</button>
+  </header>
+
+  @if (error(); as errorMessage) {
+    <section class="state-card error">{{ errorMessage }}</section>
+  } @else if (loading() && !payload()) {
+    <section class="state-card">Loading validation data...</section>
+  } @else if (payload(); as payload) {
+    <section class="tables-grid">
+      @for (section of sections(payload); track section.title) {
+        <article class="table-card">
+          <h3>{{ section.title }}</h3>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Bucket</th>
+                  <th>Trades</th>
+                  <th>Wins</th>
+                  <th>Losses</th>
+                  <th>Win Rate</th>
+                  <th>Average R</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of section.rows; track row.bucket) {
+                  <tr>
+                    <td>{{ row.bucket }}</td>
+                    <td>{{ row.trades }}</td>
+                    <td>{{ row.wins }}</td>
+                    <td>{{ row.losses }}</td>
+                    <td>{{ formatPercent(row.winRate) }}</td>
+                    <td>{{ formatR(row.averageR) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </article>
+      }
+    </section>
+  }
+</section>
