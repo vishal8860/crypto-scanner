@@ -120,3 +120,16 @@ export const ENTRY_SCORE_DEVELOPING_MIN = 50;
 export const VERDICT_READY_TREND_MIN = 85;
 export const VERDICT_READY_ENTRY_MIN = 80;
 export const VERDICT_DEVELOPING_TREND_MIN = 70;
+
+export const TRADE_DECISION_WEIGHTS = {
+  trendScore: 0.35,
+  entryScore: 0.35,
+  riskReward: 0.15,
+  volumeQuality: 0.1,
+  tradeStage: 0.05
+} as const;
+
+export const TRADE_DECISION_A_PLUS_MIN = 85;
+export const TRADE_DECISION_STRONG_MIN = 72;
+export const TRADE_DECISION_WATCH_MIN = 58;
+export const TRADE_DECISION_WEAK_MIN = 45;

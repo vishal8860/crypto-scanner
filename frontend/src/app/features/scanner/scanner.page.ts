@@ -5,7 +5,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { CandleInterval } from './candle.interface';
-import { SlopeCategory, TrendAge, VolumeQuality } from './indicator-result.interface';
+import { SlopeCategory, TradeDecisionVerdict, TrendAge, VolumeQuality } from './indicator-result.interface';
 import { ScannerEngineService } from './scanner-engine.service';
 import { ScannerResult } from './scanner-result.interface';
 import { ScannerScoreBadgeComponent } from './components/scanner-score-badge.component';
@@ -72,7 +72,7 @@ export class ScannerPageComponent implements OnInit {
 	protected readonly scoreLegend = [
 		'Trend Grade: Excellent / Good / Average / Poor',
 		'Entry Grade: Ready / Watch / Developing / Poor',
-		'Verdict: READY / WATCH / DEVELOPING / IGNORE'
+		'Decision: ⭐⭐⭐⭐⭐ A+ / ⭐⭐⭐⭐ Strong / ⭐⭐⭐ Watch / ⭐⭐ Weak / ❌ Avoid'
 	] as const;
 
 	public constructor(
@@ -470,36 +470,40 @@ export class ScannerPageComponent implements OnInit {
 		return { icon: '⚪', label: result.tradeStageLabel, tone: 'neutral' };
 	}
 
-	protected verdictChip(verdict: ScannerResult['tradeVerdict']): ChipConfig {
-		if (verdict === 'READY') {
-			return { icon: '🟢', label: 'READY', tone: 'green' };
+	protected decisionVerdictChip(verdict: TradeDecisionVerdict): ChipConfig {
+		if (verdict === 'A_PLUS_SETUP') {
+			return { icon: '⭐', label: '⭐⭐⭐⭐⭐ A+ Setup', tone: 'green' };
+		}
+
+		if (verdict === 'STRONG_SETUP') {
+			return { icon: '⭐', label: '⭐⭐⭐⭐ Strong Setup', tone: 'green' };
 		}
 
 		if (verdict === 'WATCH') {
-			return { icon: '🟡', label: 'WATCH', tone: 'amber' };
+			return { icon: '🟡', label: '⭐⭐⭐ Watch', tone: 'amber' };
 		}
 
-		if (verdict === 'DEVELOPING') {
-			return { icon: '🔵', label: 'DEVELOPING', tone: 'neutral' };
+		if (verdict === 'WEAK') {
+			return { icon: '🟠', label: '⭐⭐ Weak', tone: 'orange' };
 		}
 
-		return { icon: '🔴', label: 'IGNORE', tone: 'red' };
+		return { icon: '❌', label: '❌ Avoid', tone: 'red' };
 	}
 
-	protected verdictReason(verdict: ScannerResult['tradeVerdict']): string {
-		if (verdict === 'READY') {
-			return 'Strong market quality and strong entry timing.';
+	protected momentumLabel(trendStrengthScore: number): string {
+		if (trendStrengthScore >= 8) {
+			return 'Strong';
 		}
 
-		if (verdict === 'WATCH') {
-			return 'Market quality is strong, but entry timing is not ideal yet.';
+		if (trendStrengthScore >= 6) {
+			return 'Constructive';
 		}
 
-		if (verdict === 'DEVELOPING') {
-			return 'Trend quality is building, but setup is not fully mature.';
+		if (trendStrengthScore >= 4) {
+			return 'Moderate';
 		}
 
-		return 'Market quality is below threshold for consideration.';
+		return 'Fading';
 	}
 
 	protected distanceClass(distance: number): 'distance-green' | 'distance-orange' | 'distance-red' {

@@ -268,6 +268,23 @@ table {
   font-weight: 600;
 }
 
+.trade-plan-card ul {
+  margin-top: 0.7rem;
+}
+
+.trade-plan-card li {
+  margin-bottom: 0.38rem;
+}
+
+.trade-plan-card strong.negative {
+  color: var(--distance-red);
+}
+
+.recommendation-line {
+  margin-top: 0.75rem;
+  font-weight: 600;
+}
+
 .debug-panel dl {
   margin: 0;
   display: grid;

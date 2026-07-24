@@ -24,6 +24,7 @@ import { calculateEMASeries } from '../utils/calculate-ema-series.js';
 import { countCandlesSinceEMA200Cross } from '../utils/count-candles-since-ema200-cross.js';
 import { resolveTrendAge } from '../utils/resolve-trend-age.js';
 import { EntryScoreService } from './entry-score.service.js';
+import { TradeDecisionService } from './trade-decision.service.js';
 import { EntryPlannerService } from './entry-planner.service.js';
 import { TradeEligibilityService } from './trade-eligibility.service.js';
 import { TrendScoreService } from './trend-score.service.js';
@@ -108,6 +109,7 @@ export class IndicatorsService {
     private readonly trendScoringService: TrendScoringService = new TrendScoringService(),
     private readonly trendScoreService: TrendScoreService = new TrendScoreService(),
     private readonly entryScoreService: EntryScoreService = new EntryScoreService(),
+    private readonly tradeDecisionService: TradeDecisionService = new TradeDecisionService(),
     private readonly tradeEligibilityService: TradeEligibilityService = new TradeEligibilityService(),
     private readonly tradeStageService: TradeStageService = new TradeStageService(),
     private readonly entryPlannerService: EntryPlannerService = new EntryPlannerService()
@@ -232,6 +234,17 @@ export class IndicatorsService {
       suggestedTakeProfit: plan.suggestedTakeProfit,
       price
     });
+    const tradeDecisionResult = this.tradeDecisionService.assess({
+      trendScore: trendScoreResult.trendScore,
+      entryScore: entryScoreResult.entryScore,
+      riskReward: plan.riskReward,
+      volumeQuality: scoreResult.volumeQuality,
+      tradeStage: tradeStageResult.tradeStage,
+      distanceFromEMA20Percent,
+      distanceFromEMA200Percent,
+      trendStrengthScore: scoreResult.trendStrengthScore,
+      freshCross
+    });
     const tradeVerdict = resolveTradeVerdict(trendScoreResult.trendScore, entryScoreResult.entryScore);
     const effectiveScore = eligibility.eligible ? trendScoreResult.trendScore : 0;
 
@@ -269,6 +282,13 @@ export class IndicatorsService {
       entryScore: roundTo(entryScoreResult.entryScore, 2),
       entryGrade: entryScoreResult.entryGrade,
       tradeVerdict,
+      tradeDecisionScore: roundTo(tradeDecisionResult.tradeDecisionScore, 2),
+      tradeDecisionVerdict: tradeDecisionResult.tradeDecisionVerdict,
+      riskRewardBand: tradeDecisionResult.riskRewardBand,
+      pullbackQuality: tradeDecisionResult.pullbackQuality,
+      extensionState: tradeDecisionResult.extensionState,
+      tradeDecisionAdjustments: tradeDecisionResult.tradeDecisionAdjustments,
+      finalRecommendation: tradeDecisionResult.finalRecommendation,
       emaDistanceScore: roundTo(scoreResult.emaDistanceScore, 2),
       trendAgeScore: roundTo(scoreResult.trendAgeScore, 2),
       alignmentScore: roundTo(scoreResult.alignmentScore, 2),

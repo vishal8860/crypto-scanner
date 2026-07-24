@@ -1195,3 +1195,105 @@ Traders act faster when the UI explains score causality and blockers directly, i
 ## Version
 
 v0.8.2
+
+---
+
+# Day 9
+
+**Date**  
+24 July 2026
+
+## Objective
+
+Build a Smart Entry Engine so the scanner answers whether an experienced trader should actually take the trade.
+
+---
+
+## Completed
+
+✅ Added dedicated backend `TradeDecisionService`
+
+✅ Added new decision-layer outputs:
+
+- `tradeDecisionScore` (`0..100`)
+- `tradeDecisionVerdict`
+- `riskRewardBand`
+- `pullbackQuality`
+- `extensionState`
+- `tradeDecisionAdjustments`
+- `finalRecommendation`
+
+✅ Implemented weighted decision model:
+
+- 35% Trend Score
+- 35% Entry Score
+- 15% Risk/Reward quality
+- 10% Volume quality
+- 5% Trade Stage quality
+
+✅ Added professional quality checks:
+
+- extension detection using EMA20 and EMA200 distance
+- pullback quality classification
+- risk/reward banding (`Excellent`, `Good`, `Average`, `Poor`)
+
+✅ Added transparent adjustment log with signed score impacts and human-readable reasons
+
+✅ Upgraded final setup verdict scale:
+
+- `⭐⭐⭐⭐⭐ A+ Setup`
+- `⭐⭐⭐⭐ Strong Setup`
+- `⭐⭐⭐ Watch`
+- `⭐⭐ Weak`
+- `❌ Avoid`
+
+✅ Scanner ranking now uses `tradeDecisionScore` as final ranking score
+
+✅ Replaced Trade Plan card with `Professional Trade Assessment` card in Trade Analysis
+
+✅ Preserved all existing trend/entry/eligibility/stage/priority/filtering calculations
+
+✅ Backend/frontend builds passed
+
+---
+
+## Engineering Decisions
+
+- Implemented decision intelligence as an additive layer instead of altering existing scoring engines.
+- Kept compatibility fields and prior contracts available while introducing new decision outputs.
+- Centralized deductions and recommendation logic in backend so frontend rendering stays deterministic.
+
+---
+
+## Lessons Learned
+
+Separating signal quality from execution quality produces clearer trade decisions and better ranking behavior.
+
+---
+
+## Next
+
+- Add unit tests for decision score boundary conditions and verdict mapping.
+- Add snapshot tests for Professional Trade Assessment rendering states.
+
+---
+
+## Development Score
+
+| Area | Score |
+| --- | --- |
+| Planning | ⭐⭐⭐⭐⭐ |
+| Architecture | ⭐⭐⭐⭐⭐ |
+| Code Quality | ⭐⭐⭐⭐⭐ |
+| Learning | ⭐⭐⭐⭐⭐ |
+| Features | ⭐⭐⭐⭐⭐ |
+
+### Overall
+
+10/10
+
+---
+
+## Version
+
+v0.9.0

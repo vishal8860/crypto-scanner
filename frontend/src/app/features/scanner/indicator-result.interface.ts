@@ -13,6 +13,16 @@ export type TradeStage =
 export type TrendGrade = 'Excellent' | 'Good' | 'Average' | 'Poor';
 export type EntryGrade = 'Ready' | 'Watch' | 'Developing' | 'Poor';
 export type TradeVerdict = 'READY' | 'WATCH' | 'DEVELOPING' | 'IGNORE';
+export type TradeDecisionVerdict = 'A_PLUS_SETUP' | 'STRONG_SETUP' | 'WATCH' | 'WEAK' | 'AVOID';
+export type RiskRewardBand = 'Excellent' | 'Good' | 'Average' | 'Poor' | 'Unknown';
+export type PullbackQuality = 'Perfect Pullback' | 'Acceptable Pullback' | 'Extended Move';
+export type ExtensionState = 'Not Extended' | 'Slightly Extended' | 'Extended';
+
+export interface TradeDecisionAdjustment {
+  readonly label: string;
+  readonly points: number;
+  readonly reason: string;
+}
 
 export interface IndicatorResult {
   readonly symbol: string;
@@ -48,6 +58,13 @@ export interface IndicatorResult {
   readonly entryScore: number;
   readonly entryGrade: EntryGrade;
   readonly tradeVerdict: TradeVerdict;
+  readonly tradeDecisionScore: number;
+  readonly tradeDecisionVerdict: TradeDecisionVerdict;
+  readonly riskRewardBand: RiskRewardBand;
+  readonly pullbackQuality: PullbackQuality;
+  readonly extensionState: ExtensionState;
+  readonly tradeDecisionAdjustments: readonly TradeDecisionAdjustment[];
+  readonly finalRecommendation: string;
   readonly emaDistanceScore: number;
   readonly trendAgeScore: number;
   readonly alignmentScore: number;

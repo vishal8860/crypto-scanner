@@ -74,12 +74,12 @@
           </ng-container>
 
           <ng-container matColumnDef="verdict">
-            <th mat-header-cell *matHeaderCellDef>Verdict</th>
+            <th mat-header-cell *matHeaderCellDef>Decision</th>
             <td mat-cell *matCellDef="let row">
               <vs-scanner-status-chip
-                [icon]="verdictChip(row.tradeVerdict).icon"
-                [label]="verdictChip(row.tradeVerdict).label"
-                [tone]="verdictChip(row.tradeVerdict).tone"
+                [icon]="decisionVerdictChip(row.tradeDecisionVerdict).icon"
+                [label]="decisionVerdictChip(row.tradeDecisionVerdict).label"
+                [tone]="decisionVerdictChip(row.tradeDecisionVerdict).tone"
               />
             </td>
           </ng-container>
@@ -205,31 +205,56 @@
             </section>
 
             <section class="inspector-section trade-plan-card">
-              <h3>Trade Plan</h3>
+              <h3>Professional Trade Assessment</h3>
+              <p>
+                <vs-scanner-status-chip
+                  [icon]="decisionVerdictChip(summary.tradeDecisionVerdict).icon"
+                  [label]="decisionVerdictChip(summary.tradeDecisionVerdict).label"
+                  [tone]="decisionVerdictChip(summary.tradeDecisionVerdict).tone"
+                />
+              </p>
               <dl class="trade-plan-list">
                 <div>
-                  <dt>Suggested Entry</dt>
-                  <dd>{{ formatNumber(summary.suggestedEntry) }}</dd>
+                  <dt>TradeDecisionScore</dt>
+                  <dd><vs-scanner-score-badge [score]="summary.tradeDecisionScore" /></dd>
                 </div>
                 <div>
-                  <dt>Stop Loss</dt>
-                  <dd>{{ formatNumber(summary.suggestedStopLoss) }}</dd>
-                </div>
-                <div>
-                  <dt>Target</dt>
-                  <dd>{{ formatNumber(summary.suggestedTakeProfit) }}</dd>
-                </div>
-                <div>
-                  <dt>Risk : Reward</dt>
+                  <dt>Risk Reward</dt>
                   <dd>
                     <vs-scanner-status-chip
                       [icon]="rrChip(summary.riskReward).icon"
-                      [label]="rrChip(summary.riskReward).label"
+                      [label]="summary.riskRewardBand + ' (' + formatRiskReward(summary.riskReward) + ')'"
                       [tone]="rrChip(summary.riskReward).tone"
                     />
                   </dd>
                 </div>
+                <div>
+                  <dt>Pullback Quality</dt>
+                  <dd>{{ summary.pullbackQuality }}</dd>
+                </div>
+                <div>
+                  <dt>Extension</dt>
+                  <dd>{{ summary.extensionState }}</dd>
+                </div>
+                <div>
+                  <dt>Volume</dt>
+                  <dd>{{ summary.volumeQuality }}</dd>
+                </div>
+                <div>
+                  <dt>Momentum</dt>
+                  <dd>{{ momentumLabel(summary.trendStrengthScore) }}</dd>
+                </div>
               </dl>
+              <h4>Score Adjustments</h4>
+              <ul>
+                @for (item of summary.tradeDecisionAdjustments; track item.label + item.reason) {
+                  <li>
+                    <strong [class.negative]="item.points < 0">{{ formatContribution(item.points) }}</strong>
+                    {{ item.reason }}
+                  </li>
+                }
+              </ul>
+              <p class="recommendation-line">{{ summary.finalRecommendation }}</p>
             </section>
 
             <section class="inspector-section">

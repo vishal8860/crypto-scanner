@@ -311,3 +311,37 @@ interface IndicatorResult {
 - Added blockers list with empty-state guidance when no blockers are present
 - Kept all backend algorithms and frontend scan/ranking/filtering logic unchanged
 - Preserved existing visual language while improving responsive card readability
+
+## Day 9: Smart Entry Engine (Trade Decision Layer)
+
+- Added a new intelligent decision layer on top of existing scoring:
+  - `tradeDecisionScore` (0-100)
+  - `tradeDecisionVerdict` (`A_PLUS_SETUP`, `STRONG_SETUP`, `WATCH`, `WEAK`, `AVOID`)
+- Existing scoring remains intact:
+  - `trendScore` still measures trend quality
+  - `entryScore` still measures entry timing quality
+  - legacy fields remain available for compatibility
+- New decision model combines trade quality dimensions:
+  - 35% Trend Score
+  - 35% Entry Score
+  - 15% Risk/Reward quality
+  - 10% Volume quality
+  - 5% Trade stage quality
+- Added professional execution checks:
+  - pullback quality (`Perfect Pullback` / `Acceptable Pullback` / `Extended Move`)
+  - extension state (`Not Extended` / `Slightly Extended` / `Extended`)
+  - risk/reward band (`Excellent` / `Good` / `Average` / `Poor` / `Unknown`)
+- Added transparent score adjustments with signed reasons:
+  - positive and negative contributions are exposed as `tradeDecisionAdjustments`
+- Added one-line final recommendation per market as `finalRecommendation`
+- Scanner ranking now uses `tradeDecisionScore` as final ranking score
+- Trade Analysis panel now includes `Professional Trade Assessment` card showing:
+  - Overall Rating
+  - TradeDecisionScore
+  - Risk Reward
+  - Pullback Quality
+  - Extension
+  - Volume
+  - Momentum
+  - Deduction/bonus explanation lines
+  - Final recommendation sentence
