@@ -2,8 +2,12 @@ import {
   SlopeCategory,
   EntryGrade,
   ExtensionState,
+  ProfitTarget,
   PullbackQuality,
+  RiskLevel,
   RiskRewardBand,
+  TradeState,
+  TradeWarning,
   TradeDecisionAdjustment,
   TradeDecisionVerdict,
   TradeVerdict,
@@ -65,6 +69,16 @@ export interface ScannerResult {
   readonly extensionState: ExtensionState;
   readonly tradeDecisionAdjustments: readonly TradeDecisionAdjustment[];
   readonly finalRecommendation: string;
+  readonly tradeState: TradeState;
+  readonly dynamicStopLoss: number | null;
+  readonly stopLossStrategy: string;
+  readonly profitTargets: readonly ProfitTarget[];
+  readonly tradeProgressLabel: string;
+  readonly tradeProgressR: number | null;
+  readonly managementAdvice: string;
+  readonly riskLevel: RiskLevel;
+  readonly exitWarnings: readonly TradeWarning[];
+  readonly professionalSummary: string;
   readonly priceEfficiency: number;
   readonly emaDistanceScore: number;
   readonly trendAgeScore: number;

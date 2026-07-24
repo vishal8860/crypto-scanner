@@ -1297,3 +1297,118 @@ Separating signal quality from execution quality produces clearer trade decision
 ## Version
 
 v0.9.0
+
+---
+
+# Day 10
+
+**Date**  
+24 July 2026
+
+## Objective
+
+Add a Smart Trade Management layer so each setup includes actionable post-entry guidance: what to do now, where to manage risk, and when to exit.
+
+---
+
+## Completed
+
+✅ Added dedicated backend `TradeManagementService`
+
+✅ Introduced new management contract fields:
+
+- `tradeState`
+- `dynamicStopLoss`
+- `stopLossStrategy`
+- `profitTargets` (`TP1`, `TP2`, `TP3`)
+- `tradeProgressLabel`
+- `tradeProgressR`
+- `managementAdvice`
+- `riskLevel`
+- `exitWarnings`
+- `professionalSummary`
+
+✅ Implemented dynamic stop-loss behavior:
+
+- before entry: swing-high style stop context
+- after `+1R`: move to breakeven
+- after `+2R`: trail using EMA20
+- tighter-stop guidance when EMA20 flattens
+- exit warning when EMA9 crosses above EMA20
+
+✅ Implemented profit target planner:
+
+- TP1 (`1R`)
+- TP2 (`2R`)
+- TP3 (planned target or `3R` fallback)
+
+✅ Implemented live trade progress labels:
+
+- `Waiting`
+- `Triggered`
+- `+xR`
+- `Stopped`
+- `Target Hit`
+
+✅ Added risk meter classification:
+
+- `Low`
+- `Medium`
+- `High`
+
+✅ Added severity-based exit warnings:
+
+- EMA20 flattening
+- EMA9 above EMA20
+- weak/fading volume
+- weakening momentum
+- price reclaiming EMA200
+
+✅ Added `Trade Management` card in Trade Analysis UI
+
+✅ Kept all existing scanner, scoring, and decision functionality intact
+
+✅ Backend/frontend builds passed
+
+---
+
+## Engineering Decisions
+
+- Kept trade management as a standalone service layer to avoid coupling with trend/entry/decision engines.
+- Returned fully computed management state from backend so frontend remains a rendering layer.
+- Designed output contract for future live refresh cycles without API shape changes.
+
+---
+
+## Lessons Learned
+
+Execution quality improves when scanners provide clear in-trade actions, not just entry selection.
+
+---
+
+## Next
+
+- Add unit tests for trade-state transitions and warning triggers.
+- Add optional live refresh interval for progress/advice updates.
+
+---
+
+## Development Score
+
+| Area | Score |
+| --- | --- |
+| Planning | ⭐⭐⭐⭐⭐ |
+| Architecture | ⭐⭐⭐⭐⭐ |
+| Code Quality | ⭐⭐⭐⭐⭐ |
+| Learning | ⭐⭐⭐⭐⭐ |
+| Features | ⭐⭐⭐⭐⭐ |
+
+### Overall
+
+10/10
+
+---
+
+## Version
+
+v0.10.0

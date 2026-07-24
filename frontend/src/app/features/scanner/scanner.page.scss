@@ -285,6 +285,44 @@ table {
   font-weight: 600;
 }
 
+.trade-management-card {
+  background: rgba(27, 94, 32, 0.06);
+  border-color: rgba(27, 94, 32, 0.28);
+  border-width: 2px;
+}
+
+.trade-management-card li {
+  margin-bottom: 0.45rem;
+}
+
+.target-list {
+  margin: 0;
+  display: grid;
+  gap: 0.52rem;
+}
+
+.target-list > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.target-list dt {
+  margin: 0;
+}
+
+.target-list dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.target-r {
+  margin-left: 0.4rem;
+  color: rgba(0, 0, 0, 0.62);
+  font-weight: 500;
+}
+
 .debug-panel dl {
   margin: 0;
   display: grid;

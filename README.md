@@ -345,3 +345,29 @@ interface IndicatorResult {
   - Momentum
   - Deduction/bonus explanation lines
   - Final recommendation sentence
+
+## Day 10: Smart Trade Management Engine
+
+- Added a dedicated trade management layer on top of existing setup detection and decision scoring.
+- New management outputs now available per market:
+  - `tradeState`
+  - `dynamicStopLoss`
+  - `stopLossStrategy`
+  - `profitTargets` (`TP1`, `TP2`, `TP3` with R-multiple)
+  - `tradeProgressLabel`
+  - `tradeProgressR`
+  - `managementAdvice`
+  - `riskLevel`
+  - `exitWarnings` (severity-tagged)
+  - `professionalSummary`
+- Trade Analysis UI now includes a new `Trade Management` card with:
+  - Current Trade State badge
+  - Dynamic stop suggestion and logic
+  - Profit target planner (TP1/TP2/TP3)
+  - Live trade progress (`Waiting`, `Triggered`, `+xR`, `Stopped`, `Target Hit`)
+  - Management advice
+  - Risk meter (`Low`, `Medium`, `High`)
+  - Exit warnings with severity
+  - Professional summary block
+- Management logic is structured to support future live price refresh without architecture changes.
+- Existing trend score, entry score, eligibility, stage, priority, filtering, and decision layers are preserved.

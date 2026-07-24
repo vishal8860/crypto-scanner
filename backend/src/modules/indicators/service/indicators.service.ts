@@ -25,6 +25,7 @@ import { countCandlesSinceEMA200Cross } from '../utils/count-candles-since-ema20
 import { resolveTrendAge } from '../utils/resolve-trend-age.js';
 import { EntryScoreService } from './entry-score.service.js';
 import { TradeDecisionService } from './trade-decision.service.js';
+import { TradeManagementService } from './trade-management.service.js';
 import { EntryPlannerService } from './entry-planner.service.js';
 import { TradeEligibilityService } from './trade-eligibility.service.js';
 import { TrendScoreService } from './trend-score.service.js';
@@ -110,6 +111,7 @@ export class IndicatorsService {
     private readonly trendScoreService: TrendScoreService = new TrendScoreService(),
     private readonly entryScoreService: EntryScoreService = new EntryScoreService(),
     private readonly tradeDecisionService: TradeDecisionService = new TradeDecisionService(),
+    private readonly tradeManagementService: TradeManagementService = new TradeManagementService(),
     private readonly tradeEligibilityService: TradeEligibilityService = new TradeEligibilityService(),
     private readonly tradeStageService: TradeStageService = new TradeStageService(),
     private readonly entryPlannerService: EntryPlannerService = new EntryPlannerService()
@@ -245,6 +247,24 @@ export class IndicatorsService {
       trendStrengthScore: scoreResult.trendStrengthScore,
       freshCross
     });
+    const tradeManagementResult = this.tradeManagementService.evaluate({
+      eligible: eligibility.eligible,
+      price,
+      entry: plan.suggestedEntry,
+      stopLoss: plan.suggestedStopLoss,
+      takeProfit: plan.suggestedTakeProfit,
+      ema9,
+      ema20,
+      ema200,
+      ema20SlopePercent,
+      trendScore: trendScoreResult.trendScore,
+      entryScore: entryScoreResult.entryScore,
+      trendStrengthScore: scoreResult.trendStrengthScore,
+      trendAge,
+      riskReward: plan.riskReward,
+      volumeQuality: scoreResult.volumeQuality,
+      extensionState: tradeDecisionResult.extensionState
+    });
     const tradeVerdict = resolveTradeVerdict(trendScoreResult.trendScore, entryScoreResult.entryScore);
     const effectiveScore = eligibility.eligible ? trendScoreResult.trendScore : 0;
 
@@ -289,6 +309,16 @@ export class IndicatorsService {
       extensionState: tradeDecisionResult.extensionState,
       tradeDecisionAdjustments: tradeDecisionResult.tradeDecisionAdjustments,
       finalRecommendation: tradeDecisionResult.finalRecommendation,
+      tradeState: tradeManagementResult.tradeState,
+      dynamicStopLoss: tradeManagementResult.dynamicStopLoss,
+      stopLossStrategy: tradeManagementResult.stopLossStrategy,
+      profitTargets: tradeManagementResult.profitTargets,
+      tradeProgressLabel: tradeManagementResult.tradeProgressLabel,
+      tradeProgressR: tradeManagementResult.tradeProgressR,
+      managementAdvice: tradeManagementResult.managementAdvice,
+      riskLevel: tradeManagementResult.riskLevel,
+      exitWarnings: tradeManagementResult.exitWarnings,
+      professionalSummary: tradeManagementResult.professionalSummary,
       emaDistanceScore: roundTo(scoreResult.emaDistanceScore, 2),
       trendAgeScore: roundTo(scoreResult.trendAgeScore, 2),
       alignmentScore: roundTo(scoreResult.alignmentScore, 2),

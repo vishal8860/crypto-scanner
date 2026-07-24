@@ -5,7 +5,15 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { CandleInterval } from './candle.interface';
-import { SlopeCategory, TradeDecisionVerdict, TrendAge, VolumeQuality } from './indicator-result.interface';
+import {
+	RiskLevel,
+	SlopeCategory,
+	TradeDecisionVerdict,
+	TradeState,
+	TrendAge,
+	VolumeQuality,
+	WarningSeverity
+} from './indicator-result.interface';
 import { ScannerEngineService } from './scanner-engine.service';
 import { ScannerResult } from './scanner-result.interface';
 import { ScannerScoreBadgeComponent } from './components/scanner-score-badge.component';
@@ -504,6 +512,58 @@ export class ScannerPageComponent implements OnInit {
 		}
 
 		return 'Fading';
+	}
+
+	protected tradeStateChip(state: TradeState): ChipConfig {
+		if (state === 'Waiting') {
+			return { icon: '⏳', label: 'Waiting', tone: 'neutral' };
+		}
+
+		if (state === 'Ready to Enter') {
+			return { icon: '🟢', label: 'Ready to Enter', tone: 'green' };
+		}
+
+		if (state === 'In Position') {
+			return { icon: '🔵', label: 'In Position', tone: 'neutral' };
+		}
+
+		if (state === 'Partial Profit') {
+			return { icon: '🟡', label: 'Partial Profit', tone: 'amber' };
+		}
+
+		if (state === 'Trail Stop') {
+			return { icon: '🟠', label: 'Trail Stop', tone: 'orange' };
+		}
+
+		return { icon: '🔴', label: 'Exit', tone: 'red' };
+	}
+
+	protected riskLevelChip(level: RiskLevel): ChipConfig {
+		if (level === 'Low') {
+			return { icon: '🟢', label: 'Low', tone: 'green' };
+		}
+
+		if (level === 'Medium') {
+			return { icon: '🟡', label: 'Medium', tone: 'amber' };
+		}
+
+		return { icon: '🔴', label: 'High', tone: 'red' };
+	}
+
+	protected warningChip(severity: WarningSeverity): ChipConfig {
+		if (severity === 'high') {
+			return { icon: '⛔', label: 'High', tone: 'red' };
+		}
+
+		if (severity === 'medium') {
+			return { icon: '⚠️', label: 'Medium', tone: 'amber' };
+		}
+
+		return { icon: 'ℹ️', label: 'Low', tone: 'neutral' };
+	}
+
+	protected formatRMultiple(value: number | null): string {
+		return value === null ? 'N/A' : `${value.toFixed(2)}R`;
 	}
 
 	protected distanceClass(distance: number): 'distance-green' | 'distance-orange' | 'distance-red' {

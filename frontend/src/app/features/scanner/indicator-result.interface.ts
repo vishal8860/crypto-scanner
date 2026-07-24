@@ -17,11 +17,25 @@ export type TradeDecisionVerdict = 'A_PLUS_SETUP' | 'STRONG_SETUP' | 'WATCH' | '
 export type RiskRewardBand = 'Excellent' | 'Good' | 'Average' | 'Poor' | 'Unknown';
 export type PullbackQuality = 'Perfect Pullback' | 'Acceptable Pullback' | 'Extended Move';
 export type ExtensionState = 'Not Extended' | 'Slightly Extended' | 'Extended';
+export type TradeState = 'Waiting' | 'Ready to Enter' | 'In Position' | 'Partial Profit' | 'Trail Stop' | 'Exit';
+export type RiskLevel = 'Low' | 'Medium' | 'High';
+export type WarningSeverity = 'low' | 'medium' | 'high';
 
 export interface TradeDecisionAdjustment {
   readonly label: string;
   readonly points: number;
   readonly reason: string;
+}
+
+export interface ProfitTarget {
+  readonly label: 'TP1' | 'TP2' | 'TP3';
+  readonly price: number | null;
+  readonly rMultiple: number | null;
+}
+
+export interface TradeWarning {
+  readonly severity: WarningSeverity;
+  readonly message: string;
 }
 
 export interface IndicatorResult {
@@ -65,6 +79,16 @@ export interface IndicatorResult {
   readonly extensionState: ExtensionState;
   readonly tradeDecisionAdjustments: readonly TradeDecisionAdjustment[];
   readonly finalRecommendation: string;
+  readonly tradeState: TradeState;
+  readonly dynamicStopLoss: number | null;
+  readonly stopLossStrategy: string;
+  readonly profitTargets: readonly ProfitTarget[];
+  readonly tradeProgressLabel: string;
+  readonly tradeProgressR: number | null;
+  readonly managementAdvice: string;
+  readonly riskLevel: RiskLevel;
+  readonly exitWarnings: readonly TradeWarning[];
+  readonly professionalSummary: string;
   readonly emaDistanceScore: number;
   readonly trendAgeScore: number;
   readonly alignmentScore: number;

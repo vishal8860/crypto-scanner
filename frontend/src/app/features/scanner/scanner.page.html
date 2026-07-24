@@ -257,6 +257,84 @@
               <p class="recommendation-line">{{ summary.finalRecommendation }}</p>
             </section>
 
+            <section class="inspector-section trade-management-card">
+              <h3>Trade Management</h3>
+              <dl class="trade-plan-list">
+                <div>
+                  <dt>Current Trade State</dt>
+                  <dd>
+                    <vs-scanner-status-chip
+                      [icon]="tradeStateChip(summary.tradeState).icon"
+                      [label]="tradeStateChip(summary.tradeState).label"
+                      [tone]="tradeStateChip(summary.tradeState).tone"
+                    />
+                  </dd>
+                </div>
+                <div>
+                  <dt>Suggested Stop</dt>
+                  <dd>{{ formatNumber(summary.dynamicStopLoss) }}</dd>
+                </div>
+                <div>
+                  <dt>Stop Logic</dt>
+                  <dd>{{ summary.stopLossStrategy }}</dd>
+                </div>
+                <div>
+                  <dt>Trade Progress</dt>
+                  <dd>
+                    {{ summary.tradeProgressLabel }}
+                    @if (summary.tradeProgressR !== null) {
+                      ({{ formatRMultiple(summary.tradeProgressR) }})
+                    }
+                  </dd>
+                </div>
+                <div>
+                  <dt>Management Advice</dt>
+                  <dd>{{ summary.managementAdvice }}</dd>
+                </div>
+                <div>
+                  <dt>Risk Meter</dt>
+                  <dd>
+                    <vs-scanner-status-chip
+                      [icon]="riskLevelChip(summary.riskLevel).icon"
+                      [label]="riskLevelChip(summary.riskLevel).label"
+                      [tone]="riskLevelChip(summary.riskLevel).tone"
+                    />
+                  </dd>
+                </div>
+              </dl>
+
+              <h4>Profit Target Planner</h4>
+              <dl class="target-list">
+                @for (target of summary.profitTargets; track target.label) {
+                  <div>
+                    <dt>{{ target.label }}</dt>
+                    <dd>{{ formatNumber(target.price) }} <span class="target-r">{{ formatRMultiple(target.rMultiple) }}</span></dd>
+                  </div>
+                }
+              </dl>
+
+              <h4>Exit Warnings</h4>
+              @if (summary.exitWarnings.length === 0) {
+                <p>No active exit warnings.</p>
+              } @else {
+                <ul>
+                  @for (warning of summary.exitWarnings; track warning.message) {
+                    <li>
+                      <vs-scanner-status-chip
+                        [icon]="warningChip(warning.severity).icon"
+                        [label]="warningChip(warning.severity).label"
+                        [tone]="warningChip(warning.severity).tone"
+                      />
+                      {{ warning.message }}
+                    </li>
+                  }
+                </ul>
+              }
+
+              <h4>Professional Summary</h4>
+              <p class="recommendation-line">{{ summary.professionalSummary }}</p>
+            </section>
+
             <section class="inspector-section">
               <h3>Why this trade?</h3>
               @if (strengths.length === 0) {
