@@ -17,6 +17,11 @@ import {
 } from '../constants/indicator.constants.js';
 import {
   ExtensionState,
+  HigherTimeframeConfirmation,
+  BosDirection,
+  CompressionState,
+  RetestStatus,
+  StructureTrend,
   PullbackQuality,
   RiskRewardBand,
   TradeDecisionAdjustment,
@@ -42,6 +47,16 @@ export interface TradeDecisionInput {
   readonly ema20SlopePercent: number;
   readonly isSideways: boolean;
   readonly sidewaysScore: number;
+  readonly higherTimeframeConfirmation: HigherTimeframeConfirmation;
+  readonly higherTimeframeTrendScore: number | null;
+  readonly marketStructure: StructureTrend;
+  readonly structureQualityScore: number;
+  readonly bosStatus: BosDirection;
+  readonly candlesSinceBos: number | null;
+  readonly retestStatus: RetestStatus;
+  readonly chochDetected: boolean;
+  readonly compressionState: CompressionState;
+  readonly falseBreakdown: boolean;
 }
 
 export interface TradeDecisionResult {
@@ -91,6 +106,16 @@ export class TradeDecisionService {
       adjustments.push(booster);
     }
 
+    const multiTimeframeAdjustment = this.resolveMultiTimeframeAdjustment(
+      input.higherTimeframeConfirmation,
+      input.trendScore,
+      input.higherTimeframeTrendScore
+    );
+
+    if (multiTimeframeAdjustment !== null) {
+      adjustments.push(multiTimeframeAdjustment);
+    }
+
     const baseScore =
       input.trendScore * TRADE_DECISION_WEIGHTS.trendScore +
       input.entryScore * TRADE_DECISION_WEIGHTS.entryScore +
@@ -98,9 +123,14 @@ export class TradeDecisionService {
       this.volumeQualityScore(input.volumeQuality) * TRADE_DECISION_WEIGHTS.volumeQuality +
       this.tradeStageScore(input.tradeStage) * TRADE_DECISION_WEIGHTS.tradeStage;
 
-    const boosterImpact = boosters.reduce((total, current) => total + current.points, 0);
+    const boosterImpact = adjustments
+      .filter((item) => item.points > 0)
+      .reduce((total, current) => total + current.points, 0);
+    const softPenalty = adjustments
+      .filter((item) => item.points < 0 && item.label !== 'Blocked because')
+      .reduce((total, current) => total + current.points, 0);
     const blockerPenalty = blockerReasons.length > 0 ? 30 : 0;
-    const adjustedScore = baseScore + boosterImpact - blockerPenalty;
+    const adjustedScore = baseScore + boosterImpact + softPenalty - blockerPenalty;
     const tradeDecisionScore = roundTo(clamp(adjustedScore, 0, 100), 2);
 
     const tradeDecisionVerdict = blockerReasons.length > 0
@@ -248,6 +278,10 @@ export class TradeDecisionService {
       blockers.push('Risk/reward is unavailable for decision quality.');
     }
 
+    if (input.falseBreakdown) {
+      blockers.push('Price quickly reclaimed broken structure.');
+    }
+
     return blockers;
   }
 
@@ -285,7 +319,67 @@ export class TradeDecisionService {
       boosters.push({ label: 'Positive factor', points: 5, reason: 'EMA spacing is healthy and bearish.' });
     }
 
+    if (input.bosStatus === 'Bearish BOS') {
+      boosters.push({
+        label: 'Structure factor',
+        points: input.candlesSinceBos !== null && input.candlesSinceBos <= 5 ? 7 : 4,
+        reason: 'Clean bearish break of structure is in place.'
+      });
+    }
+
+    if (input.retestStatus === 'Broke then Retested') {
+      boosters.push({ label: 'Structure factor', points: 6, reason: 'Break of structure was successfully retested.' });
+    }
+
+    if (input.structureQualityScore >= 7) {
+      boosters.push({ label: 'Structure factor', points: 7, reason: 'Structure quality is strong and clean.' });
+    }
+
+    if (input.compressionState !== 'None') {
+      boosters.push({ label: 'Structure factor', points: -6, reason: `Compression detected: ${input.compressionState}.` });
+    }
+
+    if (input.chochDetected) {
+      boosters.push({ label: 'Structure factor', points: -8, reason: 'CHoCH detected against current trend.' });
+    }
+
+    if (input.structureQualityScore <= 4) {
+      boosters.push({ label: 'Structure factor', points: -5, reason: 'Structure quality is weak and noisy.' });
+    }
+
     return boosters;
+  }
+
+  private resolveMultiTimeframeAdjustment(
+    confirmation: HigherTimeframeConfirmation,
+    primaryTrendScore: number,
+    higherTrendScore: number | null
+  ): TradeDecisionAdjustment | null {
+    if (confirmation === 'Confirmed') {
+      if (higherTrendScore !== null && primaryTrendScore >= TREND_SCORE_EXCELLENT_MIN && higherTrendScore >= TREND_SCORE_EXCELLENT_MIN) {
+        return {
+          label: 'Multi-Timeframe Bonus',
+          points: 15,
+          reason: '1 Hour confirms bearish trend and both timeframes are excellent.'
+        };
+      }
+
+      return {
+        label: 'Multi-Timeframe Bonus',
+        points: 10,
+        reason: '1 Hour confirms bearish trend.'
+      };
+    }
+
+    if (confirmation === 'Counter Trend') {
+      return {
+        label: 'Multi-Timeframe Bonus',
+        points: -15,
+        reason: 'Higher timeframe remains bullish.'
+      };
+    }
+
+    return null;
   }
 
   private resolveExtensionState(distanceFromEMA20Percent: number, distanceFromEMA200Percent: number): ExtensionState {

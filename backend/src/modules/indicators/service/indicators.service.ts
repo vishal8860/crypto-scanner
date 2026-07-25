@@ -24,6 +24,8 @@ import { calculateEMASeries } from '../utils/calculate-ema-series.js';
 import { countCandlesSinceEMA200Cross } from '../utils/count-candles-since-ema200-cross.js';
 import { resolveTrendAge } from '../utils/resolve-trend-age.js';
 import { EntryScoreService } from './entry-score.service.js';
+import { MarketStructureService } from './market-structure.service.js';
+import { MultiTimeframeAnalysisService } from './multi-timeframe-analysis.service.js';
 import { TradeDecisionService } from './trade-decision.service.js';
 import { TradeManagementService } from './trade-management.service.js';
 import { EntryPlannerService } from './entry-planner.service.js';
@@ -110,6 +112,8 @@ export class IndicatorsService {
     private readonly trendScoringService: TrendScoringService = new TrendScoringService(),
     private readonly trendScoreService: TrendScoreService = new TrendScoreService(),
     private readonly entryScoreService: EntryScoreService = new EntryScoreService(),
+    private readonly marketStructureService: MarketStructureService = new MarketStructureService(),
+    private readonly multiTimeframeAnalysisService: MultiTimeframeAnalysisService = new MultiTimeframeAnalysisService(),
     private readonly tradeDecisionService: TradeDecisionService = new TradeDecisionService(),
     private readonly tradeManagementService: TradeManagementService = new TradeManagementService(),
     private readonly tradeEligibilityService: TradeEligibilityService = new TradeEligibilityService(),
@@ -118,6 +122,14 @@ export class IndicatorsService {
   ) {}
 
   public async getForMarket(query: IndicatorsQueryDto): Promise<IndicatorsResponseDto> {
+    const result = await this.buildIndicatorResult(query, true);
+    return { data: result };
+  }
+
+  private async buildIndicatorResult(
+    query: IndicatorsQueryDto,
+    includeMultiTimeframe: boolean
+  ): Promise<IndicatorResult> {
     const candlesResponse = await this.candlesService.list({
       symbol: query.symbol,
       interval: query.interval,
@@ -158,6 +170,13 @@ export class IndicatorsService {
     const trendAge = resolveTrendAge(candlesSinceEMA200Cross);
     const trend = resolveTrend(price, ema9, ema20, ema200);
     const priceEfficiency = resolvePriceEfficiency(closes, price, candlesSinceEMA200Cross);
+    const marketStructureResult = this.marketStructureService.analyze({
+      closes,
+      highs,
+      lows,
+      price,
+      trend
+    });
     const scoreResult = this.trendScoringService.score({
       price,
       closes,
@@ -236,6 +255,49 @@ export class IndicatorsService {
       suggestedTakeProfit: plan.suggestedTakeProfit,
       price
     });
+    const baseSnapshot = {
+      timeframe: query.interval,
+      trendScore: roundTo(trendScoreResult.trendScore, 2),
+      entryScore: roundTo(entryScoreResult.entryScore, 2),
+      trendGrade: trendScoreResult.trendGrade,
+      tradeStage: tradeStageResult.tradeStage,
+      tradeStageLabel: tradeStageResult.tradeStageLabel,
+      trend,
+      emaAlignment: isBearishAlignment,
+      volumeQuality: scoreResult.volumeQuality,
+      trendStrengthScore: scoreResult.trendStrengthScore
+    } as const;
+
+    const multiTimeframeResult = includeMultiTimeframe
+      ? await this.multiTimeframeAnalysisService.analyze({
+          symbol: query.symbol,
+          primaryInterval: query.interval,
+          primaryAnalysis: baseSnapshot,
+          analyzeInterval: async (interval) => {
+            const snapshotResult = await this.buildIndicatorResult({ symbol: query.symbol, interval }, false);
+
+            return {
+              timeframe: interval,
+              trendScore: snapshotResult.trendScore,
+              entryScore: snapshotResult.entryScore,
+              trendGrade: snapshotResult.trendGrade,
+              tradeStage: snapshotResult.tradeStage,
+              tradeStageLabel: snapshotResult.tradeStageLabel,
+              trend: snapshotResult.trend,
+              emaAlignment: snapshotResult.isBearishAlignment,
+              volumeQuality: snapshotResult.volumeQuality,
+              trendStrengthScore: snapshotResult.trendStrengthScore
+            };
+          }
+        })
+      : {
+          analyses: [baseSnapshot],
+          higherTimeframeConfirmation: 'Neutral' as const
+        };
+
+    const higherTimeframeTrendScore =
+      multiTimeframeResult.analyses.find((analysis) => analysis.timeframe !== query.interval)?.trendScore ?? null;
+
     const tradeDecisionResult = this.tradeDecisionService.assess({
       trendScore: trendScoreResult.trendScore,
       entryScore: entryScoreResult.entryScore,
@@ -252,7 +314,17 @@ export class IndicatorsService {
       isBearishAlignment,
       ema20SlopePercent,
       isSideways: scoreResult.isSideways,
-      sidewaysScore: scoreResult.sidewaysScore
+      sidewaysScore: scoreResult.sidewaysScore,
+      higherTimeframeConfirmation: multiTimeframeResult.higherTimeframeConfirmation,
+      higherTimeframeTrendScore,
+      marketStructure: marketStructureResult.marketStructure,
+      structureQualityScore: marketStructureResult.structureQualityScore,
+      bosStatus: marketStructureResult.bosStatus,
+      candlesSinceBos: marketStructureResult.candlesSinceBos,
+      retestStatus: marketStructureResult.retestStatus,
+      chochDetected: marketStructureResult.chochDetected,
+      compressionState: marketStructureResult.compressionState,
+      falseBreakdown: marketStructureResult.falseBreakdown
     });
     const tradeManagementResult = this.tradeManagementService.evaluate({
       eligible: eligibility.eligible,
@@ -326,6 +398,23 @@ export class IndicatorsService {
       riskLevel: tradeManagementResult.riskLevel,
       exitWarnings: tradeManagementResult.exitWarnings,
       professionalSummary: tradeManagementResult.professionalSummary,
+      multiTimeframeAnalyses: multiTimeframeResult.analyses,
+      higherTimeframeConfirmation: multiTimeframeResult.higherTimeframeConfirmation,
+      marketStructure: marketStructureResult.marketStructure,
+      structureQualityScore: marketStructureResult.structureQualityScore,
+      bosStatus: marketStructureResult.bosStatus,
+      candlesSinceBos: marketStructureResult.candlesSinceBos,
+      bosStrength: marketStructureResult.bosStrength,
+      chochDetected: marketStructureResult.chochDetected,
+      retestStatus: marketStructureResult.retestStatus,
+      compressionState: marketStructureResult.compressionState,
+      falseBreakdown: marketStructureResult.falseBreakdown,
+      nearestSwingResistance: marketStructureResult.nearestSwingResistance,
+      nearestSwingSupport: marketStructureResult.nearestSwingSupport,
+      resistanceDistancePercent: marketStructureResult.resistanceDistancePercent,
+      supportDistancePercent: marketStructureResult.supportDistancePercent,
+      structureColumnState: marketStructureResult.structureColumnState,
+      recentSwingPoints: marketStructureResult.recentSwingPoints,
       emaDistanceScore: roundTo(scoreResult.emaDistanceScore, 2),
       trendAgeScore: roundTo(scoreResult.trendAgeScore, 2),
       alignmentScore: roundTo(scoreResult.alignmentScore, 2),
@@ -345,7 +434,7 @@ export class IndicatorsService {
       scannerScore: roundTo(effectiveScore, 2)
     };
 
-    return { data: result };
+    return result;
   }
 }
 

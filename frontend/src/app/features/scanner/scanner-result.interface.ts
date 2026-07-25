@@ -1,11 +1,20 @@
 import {
   SlopeCategory,
   EntryGrade,
+  BosDirection,
+  CompressionState,
   ExtensionState,
+  HigherTimeframeConfirmation,
+  MarketStructureLabel,
+  MultiTimeframeSnapshot,
   ProfitTarget,
   PullbackQuality,
   RiskLevel,
   RiskRewardBand,
+  RetestStatus,
+  StructureColumnState,
+  StructureTrend,
+  SwingPoint,
   TradeState,
   TradeWarning,
   TradeDecisionAdjustment,
@@ -79,6 +88,23 @@ export interface ScannerResult {
   readonly riskLevel: RiskLevel;
   readonly exitWarnings: readonly TradeWarning[];
   readonly professionalSummary: string;
+  readonly multiTimeframeAnalyses: readonly MultiTimeframeSnapshot[];
+  readonly higherTimeframeConfirmation: HigherTimeframeConfirmation;
+  readonly marketStructure: StructureTrend;
+  readonly structureQualityScore: number;
+  readonly bosStatus: BosDirection;
+  readonly candlesSinceBos: number | null;
+  readonly bosStrength: number;
+  readonly chochDetected: boolean;
+  readonly retestStatus: RetestStatus;
+  readonly compressionState: CompressionState;
+  readonly falseBreakdown: boolean;
+  readonly nearestSwingResistance: number | null;
+  readonly nearestSwingSupport: number | null;
+  readonly resistanceDistancePercent: number | null;
+  readonly supportDistancePercent: number | null;
+  readonly structureColumnState: StructureColumnState;
+  readonly recentSwingPoints: readonly SwingPoint[];
   readonly priceEfficiency: number;
   readonly emaDistanceScore: number;
   readonly trendAgeScore: number;

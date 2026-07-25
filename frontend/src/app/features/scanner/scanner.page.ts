@@ -6,6 +6,8 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { CandleInterval } from './candle.interface';
 import {
+	HigherTimeframeConfirmation,
+	MultiTimeframeSnapshot,
 	RiskLevel,
 	SlopeCategory,
 	TradeDecisionVerdict,
@@ -54,8 +56,10 @@ export class ScannerPageComponent implements OnInit {
 	protected readonly displayedColumns = [
 		'rank',
 		'symbol',
+		'structure',
 		'trendScore',
 		'entryScore',
+		'mtf',
 		'verdict',
 		'priority',
 		'tradeStage',
@@ -512,6 +516,37 @@ export class ScannerPageComponent implements OnInit {
 		}
 
 		return 'Fading';
+	}
+
+	protected mtfChip(state: HigherTimeframeConfirmation): ChipConfig {
+		if (state === 'Confirmed') {
+			return { icon: '🟢', label: 'Confirmed', tone: 'green' };
+		}
+
+		if (state === 'Counter Trend') {
+			return { icon: '🔴', label: 'Counter', tone: 'red' };
+		}
+
+		return { icon: '🟡', label: 'Neutral', tone: 'amber' };
+	}
+
+	protected structureChip(state: ScannerResult['structureColumnState']): ChipConfig {
+		if (state === 'Strong') {
+			return { icon: '🟢', label: 'Strong', tone: 'green' };
+		}
+
+		if (state === 'Mixed') {
+			return { icon: '🟡', label: 'Mixed', tone: 'amber' };
+		}
+
+		return { icon: '🔴', label: 'Weak', tone: 'red' };
+	}
+
+	protected timeframeSnapshot(
+		summary: ScannerResult,
+		timeframe: string
+	): MultiTimeframeSnapshot | null {
+		return summary.multiTimeframeAnalyses.find((item) => item.timeframe === timeframe) ?? null;
 	}
 
 	protected tradeStateChip(state: TradeState): ChipConfig {

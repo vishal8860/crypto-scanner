@@ -20,6 +20,13 @@ export type ExtensionState = 'Not Extended' | 'Slightly Extended' | 'Extended';
 export type TradeState = 'Waiting' | 'Ready to Enter' | 'In Position' | 'Partial Profit' | 'Trail Stop' | 'Exit';
 export type RiskLevel = 'Low' | 'Medium' | 'High';
 export type WarningSeverity = 'low' | 'medium' | 'high';
+export type HigherTimeframeConfirmation = 'Confirmed' | 'Neutral' | 'Counter Trend';
+export type MarketStructureLabel = 'HH' | 'HL' | 'LH' | 'LL';
+export type StructureTrend = 'Bullish Structure' | 'Bearish Structure' | 'Mixed Structure';
+export type BosDirection = 'Bullish BOS' | 'Bearish BOS' | 'No BOS';
+export type RetestStatus = 'Broke and Continued' | 'Broke then Retested' | 'Broke then Failed' | 'No Retest';
+export type CompressionState = 'Triangle' | 'Range' | 'Low Volatility Squeeze' | 'None';
+export type StructureColumnState = 'Strong' | 'Mixed' | 'Weak';
 
 export interface TradeDecisionAdjustment {
   readonly label: string;
@@ -36,6 +43,25 @@ export interface ProfitTarget {
 export interface TradeWarning {
   readonly severity: WarningSeverity;
   readonly message: string;
+}
+
+export interface MultiTimeframeSnapshot {
+  readonly timeframe: string;
+  readonly trendScore: number;
+  readonly entryScore: number;
+  readonly trendGrade: TrendGrade;
+  readonly tradeStage: TradeStage;
+  readonly tradeStageLabel: string;
+  readonly trend: Trend;
+  readonly emaAlignment: boolean;
+  readonly volumeQuality: VolumeQuality;
+  readonly trendStrengthScore: number;
+}
+
+export interface SwingPoint {
+  readonly label: MarketStructureLabel;
+  readonly price: number;
+  readonly index: number;
 }
 
 export interface IndicatorResult {
@@ -89,6 +115,23 @@ export interface IndicatorResult {
   readonly riskLevel: RiskLevel;
   readonly exitWarnings: readonly TradeWarning[];
   readonly professionalSummary: string;
+  readonly multiTimeframeAnalyses: readonly MultiTimeframeSnapshot[];
+  readonly higherTimeframeConfirmation: HigherTimeframeConfirmation;
+  readonly marketStructure: StructureTrend;
+  readonly structureQualityScore: number;
+  readonly bosStatus: BosDirection;
+  readonly candlesSinceBos: number | null;
+  readonly bosStrength: number;
+  readonly chochDetected: boolean;
+  readonly retestStatus: RetestStatus;
+  readonly compressionState: CompressionState;
+  readonly falseBreakdown: boolean;
+  readonly nearestSwingResistance: number | null;
+  readonly nearestSwingSupport: number | null;
+  readonly resistanceDistancePercent: number | null;
+  readonly supportDistancePercent: number | null;
+  readonly structureColumnState: StructureColumnState;
+  readonly recentSwingPoints: readonly SwingPoint[];
   readonly emaDistanceScore: number;
   readonly trendAgeScore: number;
   readonly alignmentScore: number;

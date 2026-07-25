@@ -1626,3 +1626,195 @@ Gated decision hierarchy behaves closer to discretionary trading discipline than
 ## Version
 
 v0.11.1
+
+---
+
+# Day 12
+
+**Date**  
+25 July 2026
+
+## Objective
+
+Improve scanner quality by confirming setups using higher timeframes instead of relying on a single timeframe only.
+
+---
+
+## Completed
+
+✅ Added reusable backend `MultiTimeframeAnalysisService`
+
+✅ Extended market analysis to include:
+
+- `15m` primary analysis
+- `1h` higher timeframe analysis
+- future-ready structure for additional timeframes
+
+✅ Added per-timeframe snapshot outputs:
+
+- trend score
+- entry score
+- trend grade
+- trade stage
+- trend direction
+- EMA alignment
+- volume quality
+- trend strength
+
+✅ Added higher timeframe confirmation states:
+
+- `Confirmed`
+- `Neutral`
+- `Counter Trend`
+
+✅ Integrated MTF confirmation into decision engine:
+
+- confirmation bonus
+- counter-trend penalty
+- stronger upgrade when both timeframes are excellent
+
+✅ Added compact `MTF` column to scanner table
+
+✅ Added `Multi-Timeframe Analysis` card in Trade Analysis
+
+✅ Backend/frontend builds passed
+
+---
+
+## Engineering Decisions
+
+- Kept MTF analysis in a dedicated reusable service to avoid hardcoding timeframe logic into `IndicatorsService`.
+- Represented timeframe results as typed snapshots so future `4H`/daily/weekly expansion requires minimal API changes.
+- Treated MTF confirmation as additive decision context rather than replacing existing trend or entry scoring.
+
+---
+
+## Lessons Learned
+
+Higher timeframe alignment improves decision confidence more reliably than single-timeframe scoring alone.
+
+---
+
+## Next
+
+- Add `4h` confirmation layer.
+- Add tests for MTF confirmation state transitions.
+
+---
+
+## Development Score
+
+| Area | Score |
+| --- | --- |
+| Planning | ⭐⭐⭐⭐⭐ |
+| Architecture | ⭐⭐⭐⭐⭐ |
+| Code Quality | ⭐⭐⭐⭐⭐ |
+| Learning | ⭐⭐⭐⭐⭐ |
+| Features | ⭐⭐⭐⭐⭐ |
+
+### Overall
+
+10/10
+
+---
+
+## Version
+
+v0.12.0
+
+---
+
+# Day 13
+
+**Date**  
+25 July 2026
+
+## Objective
+
+Upgrade Vishal Scanner with market-structure intelligence so decision quality reflects price action, not only moving-average state.
+
+---
+
+## Completed
+
+✅ Added dedicated backend `MarketStructureService`
+
+✅ Implemented swing detection for:
+
+- `HH`
+- `HL`
+- `LH`
+- `LL`
+
+✅ Added structure analysis outputs:
+
+- structure trend
+- structure quality score (`0..10`)
+- BOS status
+- candles since BOS
+- BOS strength
+- CHoCH detection
+- retest status
+- compression state
+- false breakdown detection
+- nearest swing support/resistance
+- support/resistance distance
+
+✅ Integrated market structure into decision engine:
+
+- clean BOS bonus
+- successful retest bonus
+- strong structure bonus
+- fake breakdown penalty
+- CHoCH penalty
+- compression penalty
+- weak structure penalty
+
+✅ Added compact `Structure` column to scanner table
+
+✅ Added `Market Structure` card in Trade Analysis
+
+✅ Backend/frontend builds passed
+
+---
+
+## Engineering Decisions
+
+- Kept market structure as a standalone service so bullish scanning and future price-action features can be added without touching EMA engines.
+- Derived structure directly from existing candle arrays to avoid new vendor dependencies.
+- Preserved current UI language and decision flow while extending them with price-action context.
+
+---
+
+## Lessons Learned
+
+Price-action structure catches quality differences that moving averages alone cannot distinguish, especially around fake breakdowns and noisy compression zones.
+
+---
+
+## Next
+
+- Add unit tests for swing labeling, BOS/CHoCH boundaries, and false-break scenarios.
+- Add bullish structure support path for future long-side scanning.
+
+---
+
+## Development Score
+
+| Area | Score |
+| --- | --- |
+| Planning | ⭐⭐⭐⭐⭐ |
+| Architecture | ⭐⭐⭐⭐⭐ |
+| Code Quality | ⭐⭐⭐⭐⭐ |
+| Learning | ⭐⭐⭐⭐⭐ |
+| Features | ⭐⭐⭐⭐⭐ |
+
+### Overall
+
+10/10
+
+---
+
+## Version
+
+v0.13.0

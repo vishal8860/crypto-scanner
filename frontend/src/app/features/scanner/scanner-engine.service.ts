@@ -21,6 +21,7 @@ export interface ScanSummary {
 }
 
 const SCAN_BATCH_SIZE = 8;
+const IGNORE_SCORE_THRESHOLD = 60;
 
 const toScannerResult = (indicator: IndicatorResult): ScannerResult => ({
   rank: 0,
@@ -81,6 +82,23 @@ const toScannerResult = (indicator: IndicatorResult): ScannerResult => ({
   riskLevel: indicator.riskLevel,
   exitWarnings: indicator.exitWarnings,
   professionalSummary: indicator.professionalSummary,
+  multiTimeframeAnalyses: indicator.multiTimeframeAnalyses,
+  higherTimeframeConfirmation: indicator.higherTimeframeConfirmation,
+  marketStructure: indicator.marketStructure,
+  structureQualityScore: indicator.structureQualityScore,
+  bosStatus: indicator.bosStatus,
+  candlesSinceBos: indicator.candlesSinceBos,
+  bosStrength: indicator.bosStrength,
+  chochDetected: indicator.chochDetected,
+  retestStatus: indicator.retestStatus,
+  compressionState: indicator.compressionState,
+  falseBreakdown: indicator.falseBreakdown,
+  nearestSwingResistance: indicator.nearestSwingResistance,
+  nearestSwingSupport: indicator.nearestSwingSupport,
+  resistanceDistancePercent: indicator.resistanceDistancePercent,
+  supportDistancePercent: indicator.supportDistancePercent,
+  structureColumnState: indicator.structureColumnState,
+  recentSwingPoints: indicator.recentSwingPoints,
   priceEfficiency: indicator.priceEfficiency,
   emaDistanceScore: indicator.emaDistanceScore,
   trendAgeScore: indicator.trendAgeScore,
@@ -106,14 +124,17 @@ const applyOpportunityFilter = (results: readonly ScannerResult[]): {
   readonly lowPriorityCount: number;
 } => {
   const eligible = results.filter((result) => result.eligible);
-  const filtered = rankByScore(eligible);
-  const highPriorityCount = eligible.filter((result) => result.priority === 'High').length;
-  const mediumPriorityCount = eligible.filter((result) => result.priority === 'Medium').length;
-  const lowPriorityCount = eligible.filter((result) => result.priority === 'Low').length;
+  const visible = eligible.filter(
+    (result) => !(result.trendScore < IGNORE_SCORE_THRESHOLD && result.entryScore < IGNORE_SCORE_THRESHOLD)
+  );
+  const filtered = rankByScore(visible);
+  const highPriorityCount = visible.filter((result) => result.priority === 'High').length;
+  const mediumPriorityCount = visible.filter((result) => result.priority === 'Medium').length;
+  const lowPriorityCount = visible.filter((result) => result.priority === 'Low').length;
 
   return {
     filtered,
-    eligibleCount: eligible.length,
+    eligibleCount: visible.length,
     highPriorityCount,
     mediumPriorityCount,
     lowPriorityCount

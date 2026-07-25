@@ -428,3 +428,49 @@ interface IndicatorResult {
 - Hard blockers now always override boosters/scores.
 - All thresholds moved into centralized indicator constants (no hardcoded decision thresholds in service).
 - Trend Score and Entry Score calculations are unchanged; only final decision production was improved.
+
+## Day 12: Multi-Timeframe Confirmation Engine
+
+- Added reusable backend `MultiTimeframeAnalysisService` to analyze multiple intervals per market.
+- Current architecture evaluates:
+  - `15m` primary analysis
+  - `1h` higher-timeframe confirmation
+  - future-ready extension path for `4h`, daily, and weekly
+- Each timeframe snapshot exposes:
+  - `trendScore`
+  - `entryScore`
+  - `trendGrade`
+  - `tradeStage`
+  - `trend`
+  - EMA alignment status
+  - `volumeQuality`
+  - `trendStrengthScore`
+- Added higher timeframe confirmation state:
+  - `Confirmed`
+  - `Neutral`
+  - `Counter Trend`
+- Multi-timeframe confirmation now contributes to decision quality as another booster/blocker:
+  - confirmed bearish alignment adds a bonus
+  - counter-trend higher timeframe applies a penalty
+  - stronger bonus when both timeframes are excellent
+- Scanner table now includes compact `MTF` column.
+- Trade Analysis now includes `Multi-Timeframe Analysis` card.
+
+## Day 13: Market Structure Engine
+
+- Added dedicated backend `MarketStructureService` for price-action intelligence.
+- Structure engine now detects:
+  - swing highs and lows (`HH`, `HL`, `LH`, `LL`)
+  - Break of Structure (`BOS`)
+  - Change of Character (`CHoCH`)
+  - retest outcomes
+  - nearest swing support and resistance
+  - support/resistance distance
+  - compression states (`Triangle`, `Range`, `Low Volatility Squeeze`)
+  - false breakdown reclaim behavior
+- Added `structureQualityScore` (`0..10`) and compact structure state (`Strong`, `Mixed`, `Weak`).
+- Market structure now feeds the decision engine with:
+  - positive structure adjustments for clean BOS, successful retest, and strong structure
+  - negative adjustments for fake breakdowns, CHoCH against trend, compression, and weak structure
+- Scanner table now includes compact `Structure` column.
+- Trade Analysis now includes `Market Structure` card.
