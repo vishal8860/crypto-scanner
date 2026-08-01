@@ -60,6 +60,87 @@ Today's success was creating a maintainable codebase rather than a working scann
 
 ---
 
+## Day 13.1 - Price Action Intelligence Engine (Modular)
+
+### Objective
+
+Improve decision quality and reduce false positives by adding discretionary price-action intelligence without changing existing Trend Score, Entry Score, MTF, or Trade Management engines.
+
+### Backend Architecture Additions
+
+- Added modular services in `backend/src/modules/indicators/service/`:
+	- `support-resistance.service.ts`
+	- `liquidity.service.ts`
+	- `trend-exhaustion.service.ts`
+	- `price-action-analysis.service.ts`
+- Upgraded `market-structure.service.ts` with:
+	- pivot-based swing filtering (noise-resistant)
+	- swing sequence + swing strength
+	- structure confidence
+	- BOS break price
+	- CHoCH direction enum
+	- active `Retesting` state
+- Extended `indicators.service.ts` orchestration to aggregate all price-action modules into unified analysis output.
+
+### Configuration Centralization
+
+- Added config constants in `backend/src/modules/indicators/constants/indicator.constants.ts` for:
+	- pivot lengths and swing noise threshold
+	- BOS recency behavior
+	- support/resistance distances and touch tolerance
+	- liquidity proximity thresholds
+	- EMA extension, ATR expansion, and climax volume thresholds
+	- price-action decision adjustment point values
+
+### Decision Engine Integration
+
+- Enhanced `trade-decision.service.ts` with explainable `Price Action Adjustment` entries.
+- Added config-driven positive and negative adjustments for:
+	- clean/stale BOS
+	- confirmed retest
+	- strong structure
+	- rejection from overhead structure
+	- fake breakdown
+	- CHoCH against trade direction
+	- strong support directly below
+	- trend exhaustion/parabolic extension
+	- compression
+	- liquidity pressure
+
+### Frontend Scanner Updates
+
+- Updated scanner contracts and mapping:
+	- `frontend/src/app/features/scanner/indicator-result.interface.ts`
+	- `frontend/src/app/features/scanner/scanner-result.interface.ts`
+	- `frontend/src/app/features/scanner/scanner-engine.service.ts`
+- Added compact `Support` table column (`Clear`, `Near`, `Strong Support`).
+- Promoted `Price Action Analysis` as the primary card in Trade Analysis panel with:
+	- structure trend and quality
+	- latest BOS details
+	- CHoCH
+	- retest state
+	- support/resistance strengths
+	- liquidity context
+	- exhaustion context
+	- compression and swing pattern
+
+### Build Validation
+
+- Backend build: passed
+- Frontend build: passed
+
+### Result
+
+Scanner now behaves closer to discretionary trade selection by combining:
+
+- EMA trend context
+- entry quality
+- higher-timeframe confirmation
+- structure quality and breaks
+- support/resistance pressure
+- liquidity context
+- trend exhaustion risk
+
 ## Development Score
 
 | Area | Score |
@@ -1817,4 +1898,4 @@ Price-action structure catches quality differences that moving averages alone ca
 
 ## Version
 
-v0.13.0
+v0.13.1

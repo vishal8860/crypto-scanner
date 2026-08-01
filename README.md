@@ -474,3 +474,49 @@ interface IndicatorResult {
   - negative adjustments for fake breakdowns, CHoCH against trend, compression, and weak structure
 - Scanner table now includes compact `Structure` column.
 - Trade Analysis now includes `Market Structure` card.
+
+## Day 13.1: Price Action Intelligence Engine
+
+- Upgraded scanner intelligence with a modular price-action stack while keeping Trend Score, Entry Score, MTF, and Trade Management intact.
+- Added independent services:
+  - `MarketStructureService`
+  - `SupportResistanceService`
+  - `LiquidityService`
+  - `TrendExhaustionService`
+  - `PriceActionAnalysisService`
+- Market structure now provides discretionary-style context:
+  - configurable pivot swing detection (`HH`, `HL`, `LH`, `LL`) with noise filtering
+  - structure trend, swing sequence, swing strength, structure confidence
+  - BOS direction, break price, candles since BOS, and break strength
+  - CHoCH direction (`Bullish CHoCH`, `Bearish CHoCH`, `None`)
+  - retest state (`Broke and Continued`, `Retesting`, `Broke then Retested`, `Broke then Failed`)
+- Dynamic support/resistance layer now computes:
+  - nearest support and resistance
+  - distance percent to each
+  - strength classification (`Strong`, `Medium`, `Weak`, `None`)
+  - compact support table state (`Clear`, `Near`, `Strong Support`)
+- Liquidity engine now detects and reports:
+  - equal highs/lows
+  - previous day high/low
+  - recent swing liquidity
+  - nearest liquidity zone, distance, direction, and pressure flag
+- Trend exhaustion engine now classifies:
+  - `Healthy Trend`, `Extended`, `Exhausted`, `Parabolic`
+  - using impulsive-candle count, EMA20 extension, ATR expansion, and climax volume ratio
+- Decision engine now consumes price-action adjustments (config-driven, explainable):
+  - bonuses: clean BOS, confirmed retest, strong structure, rejection from strong overhead structure
+  - penalties: fake breakdown, CHoCH against setup, strong support nearby, exhaustion/parabolic state, compression, liquidity pressure
+- Professional assessment explainability now includes explicit `Price Action Adjustment` lines with signed points and reasons.
+- Scanner table now includes compact `Support` column in addition to `Structure` and `MTF`.
+- Trade Analysis now includes a primary `Price Action Analysis` card showing:
+  - Structure Trend
+  - Structure Score
+  - Latest BOS and Candles Since BOS
+  - CHoCH
+  - Retest Status
+  - Support/Resistance Strength
+  - Liquidity Zone
+  - Trend Exhaustion
+  - Compression
+  - Swing Pattern
+- All thresholds are centralized in indicator constants; no magic numbers in price-action logic.
