@@ -24,9 +24,23 @@ export type HigherTimeframeConfirmation = 'Confirmed' | 'Neutral' | 'Counter Tre
 export type MarketStructureLabel = 'HH' | 'HL' | 'LH' | 'LL';
 export type StructureTrend = 'Bullish Structure' | 'Bearish Structure' | 'Mixed Structure';
 export type BosDirection = 'Bullish BOS' | 'Bearish BOS' | 'No BOS';
-export type RetestStatus = 'Broke and Continued' | 'Broke then Retested' | 'Broke then Failed' | 'No Retest';
+export type ChochDirection = 'Bullish CHoCH' | 'Bearish CHoCH' | 'None';
+export type RetestStatus = 'Broke and Continued' | 'Retesting' | 'Broke then Retested' | 'Broke then Failed' | 'No Retest';
 export type CompressionState = 'Triangle' | 'Range' | 'Low Volatility Squeeze' | 'None';
 export type StructureColumnState = 'Strong' | 'Mixed' | 'Weak';
+export type SupportResistanceStrength = 'Strong' | 'Medium' | 'Weak' | 'None';
+export type SupportColumnState = 'Clear' | 'Near' | 'Strong Support';
+export type LiquidityZoneType =
+  | 'Equal Highs'
+  | 'Equal Lows'
+  | 'Previous Day High'
+  | 'Previous Day Low'
+  | 'Swing High Liquidity'
+  | 'Swing Low Liquidity'
+  | 'None';
+export type LiquidityDirection = 'Above' | 'Below' | 'At Price' | 'None';
+export type TrendExhaustionState = 'Healthy Trend' | 'Extended' | 'Exhausted' | 'Parabolic';
+export type StructureQualityLabel = 'Excellent' | 'Good' | 'Average' | 'Poor';
 
 export interface TradeDecisionAdjustment {
   readonly label: string;
@@ -62,6 +76,41 @@ export interface SwingPoint {
   readonly label: MarketStructureLabel;
   readonly price: number;
   readonly index: number;
+}
+
+export interface PriceActionSnapshot {
+  readonly structureTrend: StructureTrend;
+  readonly swingSequence: readonly MarketStructureLabel[];
+  readonly swingStrength: number;
+  readonly structureConfidence: number;
+  readonly structureQualityScore: number;
+  readonly structureQualityLabel: StructureQualityLabel;
+  readonly structureColumnState: StructureColumnState;
+  readonly bosStatus: BosDirection;
+  readonly bosBreakPrice: number | null;
+  readonly candlesSinceBos: number | null;
+  readonly bosStrength: number;
+  readonly chochStatus: ChochDirection;
+  readonly retestStatus: RetestStatus;
+  readonly compressionState: CompressionState;
+  readonly falseBreakdown: boolean;
+  readonly nearestSupport: number | null;
+  readonly nearestResistance: number | null;
+  readonly supportDistancePercent: number | null;
+  readonly resistanceDistancePercent: number | null;
+  readonly supportStrength: SupportResistanceStrength;
+  readonly resistanceStrength: SupportResistanceStrength;
+  readonly supportColumnState: SupportColumnState;
+  readonly nearestLiquidityZone: LiquidityZoneType;
+  readonly liquidityDirection: LiquidityDirection;
+  readonly liquidityDistancePercent: number | null;
+  readonly liquidityPressure: boolean;
+  readonly trendExhaustion: TrendExhaustionState;
+  readonly impulsiveCandleCount: number;
+  readonly atrExpansionRatio: number;
+  readonly climaxVolumeRatio: number;
+  readonly ema20ExtensionPercent: number;
+  readonly swingPattern: string;
 }
 
 export interface IndicatorResult {
@@ -118,10 +167,16 @@ export interface IndicatorResult {
   readonly multiTimeframeAnalyses: readonly MultiTimeframeSnapshot[];
   readonly higherTimeframeConfirmation: HigherTimeframeConfirmation;
   readonly marketStructure: StructureTrend;
+  readonly swingSequence: readonly MarketStructureLabel[];
+  readonly swingStrength: number;
+  readonly structureConfidence: number;
   readonly structureQualityScore: number;
+  readonly structureQualityLabel: StructureQualityLabel;
   readonly bosStatus: BosDirection;
+  readonly bosBreakPrice: number | null;
   readonly candlesSinceBos: number | null;
   readonly bosStrength: number;
+  readonly chochStatus: ChochDirection;
   readonly chochDetected: boolean;
   readonly retestStatus: RetestStatus;
   readonly compressionState: CompressionState;
@@ -130,6 +185,19 @@ export interface IndicatorResult {
   readonly nearestSwingSupport: number | null;
   readonly resistanceDistancePercent: number | null;
   readonly supportDistancePercent: number | null;
+  readonly resistanceStrength: SupportResistanceStrength;
+  readonly supportStrength: SupportResistanceStrength;
+  readonly supportColumnState: SupportColumnState;
+  readonly nearestLiquidityZone: LiquidityZoneType;
+  readonly liquidityDirection: LiquidityDirection;
+  readonly liquidityDistancePercent: number | null;
+  readonly liquidityPressure: boolean;
+  readonly trendExhaustion: TrendExhaustionState;
+  readonly impulsiveCandleCount: number;
+  readonly atrExpansionRatio: number;
+  readonly climaxVolumeRatio: number;
+  readonly ema20ExtensionPercent: number;
+  readonly priceActionAnalysis: PriceActionSnapshot;
   readonly structureColumnState: StructureColumnState;
   readonly recentSwingPoints: readonly SwingPoint[];
   readonly emaDistanceScore: number;

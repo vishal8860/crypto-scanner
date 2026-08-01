@@ -24,9 +24,13 @@ import { calculateEMASeries } from '../utils/calculate-ema-series.js';
 import { countCandlesSinceEMA200Cross } from '../utils/count-candles-since-ema200-cross.js';
 import { resolveTrendAge } from '../utils/resolve-trend-age.js';
 import { EntryScoreService } from './entry-score.service.js';
+import { LiquidityService } from './liquidity.service.js';
 import { MarketStructureService } from './market-structure.service.js';
 import { MultiTimeframeAnalysisService } from './multi-timeframe-analysis.service.js';
+import { PriceActionAnalysisService } from './price-action-analysis.service.js';
+import { SupportResistanceService } from './support-resistance.service.js';
 import { TradeDecisionService } from './trade-decision.service.js';
+import { TrendExhaustionService } from './trend-exhaustion.service.js';
 import { TradeManagementService } from './trade-management.service.js';
 import { EntryPlannerService } from './entry-planner.service.js';
 import { TradeEligibilityService } from './trade-eligibility.service.js';
@@ -113,6 +117,10 @@ export class IndicatorsService {
     private readonly trendScoreService: TrendScoreService = new TrendScoreService(),
     private readonly entryScoreService: EntryScoreService = new EntryScoreService(),
     private readonly marketStructureService: MarketStructureService = new MarketStructureService(),
+    private readonly supportResistanceService: SupportResistanceService = new SupportResistanceService(),
+    private readonly liquidityService: LiquidityService = new LiquidityService(),
+    private readonly trendExhaustionService: TrendExhaustionService = new TrendExhaustionService(),
+    private readonly priceActionAnalysisService: PriceActionAnalysisService = new PriceActionAnalysisService(),
     private readonly multiTimeframeAnalysisService: MultiTimeframeAnalysisService = new MultiTimeframeAnalysisService(),
     private readonly tradeDecisionService: TradeDecisionService = new TradeDecisionService(),
     private readonly tradeManagementService: TradeManagementService = new TradeManagementService(),
@@ -137,6 +145,7 @@ export class IndicatorsService {
     });
 
     const closes = candlesResponse.data.map((candle) => candle.close);
+    const opens = candlesResponse.data.map((candle) => candle.open);
     const highs = candlesResponse.data.map((candle) => candle.high);
     const lows = candlesResponse.data.map((candle) => candle.low);
     const volumes = candlesResponse.data.map((candle) => candle.volume);
@@ -176,6 +185,31 @@ export class IndicatorsService {
       lows,
       price,
       trend
+    });
+    const supportResistanceResult = this.supportResistanceService.analyze({
+      price,
+      swings: marketStructureResult.recentSwingPoints
+    });
+    const liquidityResult = this.liquidityService.analyze({
+      price,
+      highs,
+      lows,
+      swings: marketStructureResult.recentSwingPoints
+    });
+    const trendExhaustionResult = this.trendExhaustionService.analyze({
+      opens,
+      highs,
+      lows,
+      closes,
+      volumes,
+      distanceFromEMA20Percent
+    });
+    const priceActionResult = this.priceActionAnalysisService.analyze({
+      marketStructure: marketStructureResult,
+      supportResistance: supportResistanceResult,
+      liquidity: liquidityResult,
+      trendExhaustion: trendExhaustionResult,
+      recentSwingPoints: marketStructureResult.recentSwingPoints
     });
     const scoreResult = this.trendScoringService.score({
       price,
@@ -322,9 +356,18 @@ export class IndicatorsService {
       bosStatus: marketStructureResult.bosStatus,
       candlesSinceBos: marketStructureResult.candlesSinceBos,
       retestStatus: marketStructureResult.retestStatus,
+      chochStatus: marketStructureResult.chochStatus,
       chochDetected: marketStructureResult.chochDetected,
       compressionState: marketStructureResult.compressionState,
-      falseBreakdown: marketStructureResult.falseBreakdown
+      falseBreakdown: marketStructureResult.falseBreakdown,
+      supportStrength: supportResistanceResult.supportStrength,
+      supportDistancePercent: supportResistanceResult.supportDistancePercent,
+      resistanceStrength: supportResistanceResult.resistanceStrength,
+      liquidityDirection: liquidityResult.liquidityDirection,
+      nearestLiquidityZone: liquidityResult.nearestLiquidityZone,
+      liquidityDistancePercent: liquidityResult.liquidityDistancePercent,
+      liquidityPressure: liquidityResult.liquidityPressure,
+      trendExhaustion: trendExhaustionResult.trendExhaustion
     });
     const tradeManagementResult = this.tradeManagementService.evaluate({
       eligible: eligibility.eligible,
@@ -401,18 +444,37 @@ export class IndicatorsService {
       multiTimeframeAnalyses: multiTimeframeResult.analyses,
       higherTimeframeConfirmation: multiTimeframeResult.higherTimeframeConfirmation,
       marketStructure: marketStructureResult.marketStructure,
+      swingSequence: marketStructureResult.swingSequence,
+      swingStrength: marketStructureResult.swingStrength,
+      structureConfidence: marketStructureResult.structureConfidence,
       structureQualityScore: marketStructureResult.structureQualityScore,
+      structureQualityLabel: marketStructureResult.structureQualityLabel,
       bosStatus: marketStructureResult.bosStatus,
+      bosBreakPrice: marketStructureResult.bosBreakPrice,
       candlesSinceBos: marketStructureResult.candlesSinceBos,
       bosStrength: marketStructureResult.bosStrength,
+      chochStatus: marketStructureResult.chochStatus,
       chochDetected: marketStructureResult.chochDetected,
       retestStatus: marketStructureResult.retestStatus,
       compressionState: marketStructureResult.compressionState,
       falseBreakdown: marketStructureResult.falseBreakdown,
-      nearestSwingResistance: marketStructureResult.nearestSwingResistance,
-      nearestSwingSupport: marketStructureResult.nearestSwingSupport,
-      resistanceDistancePercent: marketStructureResult.resistanceDistancePercent,
-      supportDistancePercent: marketStructureResult.supportDistancePercent,
+      nearestSwingResistance: supportResistanceResult.nearestResistance,
+      nearestSwingSupport: supportResistanceResult.nearestSupport,
+      resistanceDistancePercent: supportResistanceResult.resistanceDistancePercent,
+      supportDistancePercent: supportResistanceResult.supportDistancePercent,
+      resistanceStrength: supportResistanceResult.resistanceStrength,
+      supportStrength: supportResistanceResult.supportStrength,
+      supportColumnState: supportResistanceResult.supportColumnState,
+      nearestLiquidityZone: liquidityResult.nearestLiquidityZone,
+      liquidityDirection: liquidityResult.liquidityDirection,
+      liquidityDistancePercent: liquidityResult.liquidityDistancePercent,
+      liquidityPressure: liquidityResult.liquidityPressure,
+      trendExhaustion: trendExhaustionResult.trendExhaustion,
+      impulsiveCandleCount: trendExhaustionResult.impulsiveCandleCount,
+      atrExpansionRatio: trendExhaustionResult.atrExpansionRatio,
+      climaxVolumeRatio: trendExhaustionResult.climaxVolumeRatio,
+      ema20ExtensionPercent: trendExhaustionResult.ema20ExtensionPercent,
+      priceActionAnalysis: priceActionResult.snapshot,
       structureColumnState: marketStructureResult.structureColumnState,
       recentSwingPoints: marketStructureResult.recentSwingPoints,
       emaDistanceScore: roundTo(scoreResult.emaDistanceScore, 2),

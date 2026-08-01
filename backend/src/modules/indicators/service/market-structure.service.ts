@@ -1,21 +1,29 @@
 import {
+  STRUCTURE_CONFIDENCE_MAX,
   STRUCTURE_COMPRESSION_LOOKBACK,
   STRUCTURE_FALSE_BREAK_RECLAIM_PERCENT,
+  STRUCTURE_QUALITY_EXCELLENT_MIN,
+  STRUCTURE_QUALITY_GOOD_MIN,
   STRUCTURE_LOOKBACK_LIMIT,
+  STRUCTURE_MIN_SWING_MOVE_PERCENT,
   STRUCTURE_MIN_SWINGS_FOR_QUALITY,
+  STRUCTURE_PIVOT_LEFT_BARS,
+  STRUCTURE_PIVOT_RIGHT_BARS,
+  STRUCTURE_RECENT_BOS_CANDLES,
   STRUCTURE_RETEST_TOLERANCE_PERCENT,
   STRUCTURE_STRONG_QUALITY_MIN,
   STRUCTURE_SQUEEZE_MAX_RANGE_PERCENT,
-  STRUCTURE_SWING_WINDOW,
   STRUCTURE_TRIANGLE_RANGE_SHRINK_RATIO,
   STRUCTURE_WEAK_QUALITY_MAX
 } from '../constants/indicator.constants.js';
 import {
   BosDirection,
+  ChochDirection,
   CompressionState,
   MarketStructureLabel,
   RetestStatus,
   StructureColumnState,
+  StructureQualityLabel,
   StructureTrend,
   SwingPoint,
   Trend
@@ -31,10 +39,16 @@ export interface MarketStructureInput {
 
 export interface MarketStructureResult {
   readonly marketStructure: StructureTrend;
+  readonly swingSequence: readonly MarketStructureLabel[];
+  readonly swingStrength: number;
+  readonly structureConfidence: number;
   readonly structureQualityScore: number;
+  readonly structureQualityLabel: StructureQualityLabel;
   readonly bosStatus: BosDirection;
+  readonly bosBreakPrice: number | null;
   readonly candlesSinceBos: number | null;
   readonly bosStrength: number;
+  readonly chochStatus: ChochDirection;
   readonly chochDetected: boolean;
   readonly retestStatus: RetestStatus;
   readonly compressionState: CompressionState;
@@ -63,9 +77,11 @@ export class MarketStructureService {
     const swings = this.detectSwings(input.highs, input.lows);
     const labeledSwings = this.labelSwings(swings);
     const recentSwingPoints = labeledSwings.slice(-6);
+    const swingSequence = recentSwingPoints.map((swing) => swing.label);
     const marketStructure = this.resolveStructureTrend(recentSwingPoints, input.trend);
     const bos = this.resolveBos(input.closes, recentSwingPoints, marketStructure);
-    const chochDetected = this.resolveChoch(input.price, recentSwingPoints, marketStructure);
+    const chochStatus = this.resolveChoch(input.price, recentSwingPoints, marketStructure);
+    const chochDetected = chochStatus !== 'None';
     const retestStatus = this.resolveRetestStatus(input.highs, input.lows, bos, input.price);
     const compressionState = this.resolveCompression(input.closes, input.highs, input.lows);
     const falseBreakdown = this.resolveFalseBreakdown(input.price, bos, marketStructure);
@@ -73,15 +89,40 @@ export class MarketStructureService {
     const nearestSwingSupport = this.findNearestBelow(input.price, recentSwingPoints);
     const resistanceDistancePercent = this.distancePercent(input.price, nearestSwingResistance);
     const supportDistancePercent = this.distancePercent(input.price, nearestSwingSupport);
-    const structureQualityScore = this.resolveQualityScore(recentSwingPoints, marketStructure, compressionState, falseBreakdown, chochDetected);
+    const swingStrength = this.resolveSwingStrength(recentSwingPoints);
+    const structureQualityScore = this.resolveQualityScore({
+      swings: recentSwingPoints,
+      marketStructure,
+      compressionState,
+      falseBreakdown,
+      chochDetected,
+      retestStatus,
+      bosStatus: bos.direction,
+      swingStrength
+    });
+    const structureQualityLabel = this.resolveStructureQualityLabel(structureQualityScore);
+    const structureConfidence = this.resolveStructureConfidence({
+      structureQualityScore,
+      bosStatus: bos.direction,
+      candlesSinceBos: bos.candlesSinceBos,
+      chochDetected,
+      compressionState,
+      falseBreakdown
+    });
     const structureColumnState = this.resolveColumnState(structureQualityScore, marketStructure, falseBreakdown);
 
     return {
       marketStructure,
+      swingSequence,
+      swingStrength,
+      structureConfidence,
       structureQualityScore,
+      structureQualityLabel,
       bosStatus: bos.direction,
+      bosBreakPrice: bos.brokenPrice,
       candlesSinceBos: bos.candlesSinceBos,
       bosStrength: bos.strength,
+      chochStatus,
       chochDetected,
       retestStatus,
       compressionState,
@@ -96,9 +137,11 @@ export class MarketStructureService {
   }
 
   private detectSwings(highs: readonly number[], lows: readonly number[]): RawSwing[] {
-    const start = Math.max(STRUCTURE_SWING_WINDOW, highs.length - STRUCTURE_LOOKBACK_LIMIT);
-    const end = highs.length - STRUCTURE_SWING_WINDOW;
+    const start = Math.max(STRUCTURE_PIVOT_LEFT_BARS, highs.length - STRUCTURE_LOOKBACK_LIMIT);
+    const end = highs.length - STRUCTURE_PIVOT_RIGHT_BARS;
     const swings: RawSwing[] = [];
+    let lastSwingHigh: number | null = null;
+    let lastSwingLow: number | null = null;
 
     for (let index = start; index < end; index += 1) {
       const high = highs[index];
@@ -110,7 +153,8 @@ export class MarketStructureService {
       let isSwingHigh = true;
       let isSwingLow = true;
 
-      for (let offset = 1; offset <= STRUCTURE_SWING_WINDOW; offset += 1) {
+      const maxOffset = Math.max(STRUCTURE_PIVOT_LEFT_BARS, STRUCTURE_PIVOT_RIGHT_BARS);
+      for (let offset = 1; offset <= maxOffset; offset += 1) {
         const prevHigh = highs[index - offset];
         const nextHigh = highs[index + offset];
         const prevLow = lows[index - offset];
@@ -132,11 +176,19 @@ export class MarketStructureService {
       }
 
       if (isSwingHigh) {
-        swings.push({ kind: 'high', price: high, index });
+        const movePercent = lastSwingHigh === null ? STRUCTURE_MIN_SWING_MOVE_PERCENT : Math.abs(((high - lastSwingHigh) / lastSwingHigh) * 100);
+        if (movePercent >= STRUCTURE_MIN_SWING_MOVE_PERCENT) {
+          swings.push({ kind: 'high', price: high, index });
+          lastSwingHigh = high;
+        }
       }
 
       if (isSwingLow) {
-        swings.push({ kind: 'low', price: low, index });
+        const movePercent = lastSwingLow === null ? STRUCTURE_MIN_SWING_MOVE_PERCENT : Math.abs(((low - lastSwingLow) / lastSwingLow) * 100);
+        if (movePercent >= STRUCTURE_MIN_SWING_MOVE_PERCENT) {
+          swings.push({ kind: 'low', price: low, index });
+          lastSwingLow = low;
+        }
       }
     }
 
@@ -219,18 +271,18 @@ export class MarketStructureService {
     return { direction: 'No BOS', candlesSinceBos: null, strength: 0, brokenPrice: referenceSwing.price };
   }
 
-  private resolveChoch(price: number, swings: readonly SwingPoint[], structureTrend: StructureTrend): boolean {
+  private resolveChoch(price: number, swings: readonly SwingPoint[], structureTrend: StructureTrend): ChochDirection {
     if (structureTrend === 'Bearish Structure') {
       const lastLH = [...swings].reverse().find((swing) => swing.label === 'LH');
-      return lastLH !== undefined && price > lastLH.price;
+      return lastLH !== undefined && price > lastLH.price ? 'Bullish CHoCH' : 'None';
     }
 
     if (structureTrend === 'Bullish Structure') {
       const lastHL = [...swings].reverse().find((swing) => swing.label === 'HL');
-      return lastHL !== undefined && price < lastHL.price;
+      return lastHL !== undefined && price < lastHL.price ? 'Bearish CHoCH' : 'None';
     }
 
-    return false;
+    return 'None';
   }
 
   private resolveRetestStatus(
@@ -256,12 +308,20 @@ export class MarketStructureService {
         return 'Broke and Continued';
       }
 
+      if (Math.abs(price - brokenPrice) <= tolerance) {
+        return 'Retesting';
+      }
+
       return price < brokenPrice ? 'Broke then Retested' : 'Broke then Failed';
     }
 
     const retested = lowsSlice.some((low) => low >= brokenPrice - tolerance && low <= brokenPrice + tolerance);
     if (!retested) {
       return 'Broke and Continued';
+    }
+
+    if (Math.abs(price - brokenPrice) <= tolerance) {
+      return 'Retesting';
     }
 
     return price > brokenPrice ? 'Broke then Retested' : 'Broke then Failed';
@@ -316,45 +376,103 @@ export class MarketStructureService {
     return price > reclaimLevel;
   }
 
-  private resolveQualityScore(
-    swings: readonly SwingPoint[],
-    structureTrend: StructureTrend,
-    compressionState: CompressionState,
-    falseBreakdown: boolean,
-    chochDetected: boolean
-  ): number {
+  private resolveQualityScore(input: {
+    readonly swings: readonly SwingPoint[];
+    readonly marketStructure: StructureTrend;
+    readonly compressionState: CompressionState;
+    readonly falseBreakdown: boolean;
+    readonly chochDetected: boolean;
+    readonly retestStatus: RetestStatus;
+    readonly bosStatus: BosDirection;
+    readonly swingStrength: number;
+  }): number {
     let score = 5;
 
-    if (swings.length >= STRUCTURE_MIN_SWINGS_FOR_QUALITY) {
+    if (input.swings.length >= STRUCTURE_MIN_SWINGS_FOR_QUALITY) {
       score += 2;
     }
 
-    const consistency = swings.slice(-4).filter((swing) =>
-      structureTrend === 'Bearish Structure'
+    const consistency = input.swings.slice(-4).filter((swing) =>
+      input.marketStructure === 'Bearish Structure'
         ? swing.label === 'LH' || swing.label === 'LL'
-        : structureTrend === 'Bullish Structure'
+        : input.marketStructure === 'Bullish Structure'
           ? swing.label === 'HH' || swing.label === 'HL'
           : false
     ).length;
     score += Math.min(2, consistency * 0.5);
 
-    if (compressionState !== 'None') {
+    if (input.bosStatus !== 'No BOS') {
+      score += 0.8;
+    }
+
+    if (input.retestStatus === 'Broke then Retested') {
+      score += 0.8;
+    }
+
+    score += Math.min(1.5, input.swingStrength * 0.15);
+
+    if (input.compressionState !== 'None') {
       score -= 2;
     }
 
-    if (falseBreakdown) {
+    if (input.falseBreakdown) {
       score -= 3;
     }
 
-    if (chochDetected) {
+    if (input.chochDetected) {
       score -= 2;
     }
 
-    if (structureTrend === 'Mixed Structure') {
+    if (input.marketStructure === 'Mixed Structure') {
       score -= 1.5;
     }
 
     return Math.max(0, Math.min(10, roundTo(score, 1)));
+  }
+
+  private resolveStructureQualityLabel(score: number): StructureQualityLabel {
+    if (score >= STRUCTURE_QUALITY_EXCELLENT_MIN) {
+      return 'Excellent';
+    }
+
+    if (score >= STRUCTURE_QUALITY_GOOD_MIN) {
+      return 'Good';
+    }
+
+    if (score >= 4.5) {
+      return 'Average';
+    }
+
+    return 'Poor';
+  }
+
+  private resolveStructureConfidence(input: {
+    readonly structureQualityScore: number;
+    readonly bosStatus: BosDirection;
+    readonly candlesSinceBos: number | null;
+    readonly chochDetected: boolean;
+    readonly compressionState: CompressionState;
+    readonly falseBreakdown: boolean;
+  }): number {
+    let confidence = input.structureQualityScore * 10;
+
+    if (input.bosStatus !== 'No BOS' && input.candlesSinceBos !== null) {
+      confidence += input.candlesSinceBos <= STRUCTURE_RECENT_BOS_CANDLES ? 10 : 4;
+    }
+
+    if (input.chochDetected) {
+      confidence -= 16;
+    }
+
+    if (input.compressionState !== 'None') {
+      confidence -= 8;
+    }
+
+    if (input.falseBreakdown) {
+      confidence -= 12;
+    }
+
+    return roundTo(Math.max(0, Math.min(STRUCTURE_CONFIDENCE_MAX, confidence)), 2);
   }
 
   private resolveColumnState(
@@ -371,6 +489,30 @@ export class MarketStructureService {
     }
 
     return 'Mixed';
+  }
+
+  private resolveSwingStrength(swings: readonly SwingPoint[]): number {
+    if (swings.length < 3) {
+      return 0;
+    }
+
+    const amplitudes: number[] = [];
+    for (let index = 1; index < swings.length; index += 1) {
+      const previous = swings[index - 1];
+      const current = swings[index];
+      if (!previous || !current || previous.price === 0) {
+        continue;
+      }
+
+      amplitudes.push(Math.abs(((current.price - previous.price) / previous.price) * 100));
+    }
+
+    if (amplitudes.length === 0) {
+      return 0;
+    }
+
+    const averageAmplitude = amplitudes.reduce((total, value) => total + value, 0) / amplitudes.length;
+    return roundTo(Math.max(0, Math.min(10, averageAmplitude * 1.8)), 2);
   }
 
   private countCandlesSinceBreak(closes: readonly number[], level: number, side: 'above' | 'below'): number | null {

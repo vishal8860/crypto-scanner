@@ -2,18 +2,25 @@ import {
   SlopeCategory,
   EntryGrade,
   BosDirection,
+  ChochDirection,
   CompressionState,
   ExtensionState,
   HigherTimeframeConfirmation,
+  LiquidityDirection,
+  LiquidityZoneType,
   MarketStructureLabel,
   MultiTimeframeSnapshot,
+  PriceActionSnapshot,
   ProfitTarget,
   PullbackQuality,
   RiskLevel,
   RiskRewardBand,
   RetestStatus,
+  StructureQualityLabel,
   StructureColumnState,
   StructureTrend,
+  SupportColumnState,
+  SupportResistanceStrength,
   SwingPoint,
   TradeState,
   TradeWarning,
@@ -25,6 +32,7 @@ import {
   TrendGrade,
   Trend,
   TrendAge,
+  TrendExhaustionState,
   TrendClassification,
   VolumeQuality
 } from './indicator-result.interface';
@@ -91,10 +99,16 @@ export interface ScannerResult {
   readonly multiTimeframeAnalyses: readonly MultiTimeframeSnapshot[];
   readonly higherTimeframeConfirmation: HigherTimeframeConfirmation;
   readonly marketStructure: StructureTrend;
+  readonly swingSequence: readonly MarketStructureLabel[];
+  readonly swingStrength: number;
+  readonly structureConfidence: number;
   readonly structureQualityScore: number;
+  readonly structureQualityLabel: StructureQualityLabel;
   readonly bosStatus: BosDirection;
+  readonly bosBreakPrice: number | null;
   readonly candlesSinceBos: number | null;
   readonly bosStrength: number;
+  readonly chochStatus: ChochDirection;
   readonly chochDetected: boolean;
   readonly retestStatus: RetestStatus;
   readonly compressionState: CompressionState;
@@ -103,6 +117,19 @@ export interface ScannerResult {
   readonly nearestSwingSupport: number | null;
   readonly resistanceDistancePercent: number | null;
   readonly supportDistancePercent: number | null;
+  readonly resistanceStrength: SupportResistanceStrength;
+  readonly supportStrength: SupportResistanceStrength;
+  readonly supportColumnState: SupportColumnState;
+  readonly nearestLiquidityZone: LiquidityZoneType;
+  readonly liquidityDirection: LiquidityDirection;
+  readonly liquidityDistancePercent: number | null;
+  readonly liquidityPressure: boolean;
+  readonly trendExhaustion: TrendExhaustionState;
+  readonly impulsiveCandleCount: number;
+  readonly atrExpansionRatio: number;
+  readonly climaxVolumeRatio: number;
+  readonly ema20ExtensionPercent: number;
+  readonly priceActionAnalysis: PriceActionSnapshot;
   readonly structureColumnState: StructureColumnState;
   readonly recentSwingPoints: readonly SwingPoint[];
   readonly priceEfficiency: number;

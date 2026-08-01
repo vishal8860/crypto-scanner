@@ -1,4 +1,15 @@
 import {
+  DECISION_ADJ_BOS_STALE,
+  DECISION_ADJ_CHOCH_AGAINST,
+  DECISION_ADJ_CLEAN_BOS,
+  DECISION_ADJ_COMPRESSION,
+  DECISION_ADJ_CONFIRMED_RETEST,
+  DECISION_ADJ_EXHAUSTION,
+  DECISION_ADJ_FAKE_BREAKDOWN,
+  DECISION_ADJ_PARABOLIC,
+  DECISION_ADJ_STRONG_STRUCTURE,
+  DECISION_ADJ_STRONG_SUPPORT_NEARBY,
+  DECISION_ADJ_SUPPORT_REJECTION,
   DECISION_DIRECTIONAL_MOVEMENT_MIN,
   DECISION_ENTRY_POOR_EMA20_DISTANCE_MIN,
   DECISION_ENTRY_READY_EMA20_DISTANCE_MAX,
@@ -10,18 +21,25 @@ import {
   DECISION_TREND_MAX_SIDEWAYS_SCORE,
   DECISION_TREND_MIN_STRENGTH,
   ENTRY_SCORE_READY_MIN,
+  SUPPORT_DISTANCE_STRONG_WARNING_PERCENT,
   ENTRY_SCORE_WATCH_MIN,
   TREND_SCORE_EXCELLENT_MIN,
   TREND_SCORE_GOOD_MIN,
+  STRUCTURE_RECENT_BOS_CANDLES,
   TRADE_DECISION_WEIGHTS
 } from '../constants/indicator.constants.js';
 import {
   ExtensionState,
   HigherTimeframeConfirmation,
   BosDirection,
+  ChochDirection,
   CompressionState,
+  LiquidityDirection,
+  LiquidityZoneType,
   RetestStatus,
   StructureTrend,
+  SupportResistanceStrength,
+  TrendExhaustionState,
   PullbackQuality,
   RiskRewardBand,
   TradeDecisionAdjustment,
@@ -54,9 +72,18 @@ export interface TradeDecisionInput {
   readonly bosStatus: BosDirection;
   readonly candlesSinceBos: number | null;
   readonly retestStatus: RetestStatus;
+  readonly chochStatus: ChochDirection;
   readonly chochDetected: boolean;
   readonly compressionState: CompressionState;
   readonly falseBreakdown: boolean;
+  readonly supportStrength: SupportResistanceStrength;
+  readonly supportDistancePercent: number | null;
+  readonly resistanceStrength: SupportResistanceStrength;
+  readonly liquidityDirection: LiquidityDirection;
+  readonly nearestLiquidityZone: LiquidityZoneType;
+  readonly liquidityDistancePercent: number | null;
+  readonly liquidityPressure: boolean;
+  readonly trendExhaustion: TrendExhaustionState;
 }
 
 export interface TradeDecisionResult {
@@ -321,30 +348,104 @@ export class TradeDecisionService {
 
     if (input.bosStatus === 'Bearish BOS') {
       boosters.push({
-        label: 'Structure factor',
-        points: input.candlesSinceBos !== null && input.candlesSinceBos <= 5 ? 7 : 4,
+        label: 'Price Action Adjustment',
+        points: input.candlesSinceBos !== null && input.candlesSinceBos <= STRUCTURE_RECENT_BOS_CANDLES
+          ? DECISION_ADJ_CLEAN_BOS
+          : DECISION_ADJ_BOS_STALE,
         reason: 'Clean bearish break of structure is in place.'
       });
     }
 
     if (input.retestStatus === 'Broke then Retested') {
-      boosters.push({ label: 'Structure factor', points: 6, reason: 'Break of structure was successfully retested.' });
+      boosters.push({
+        label: 'Price Action Adjustment',
+        points: DECISION_ADJ_CONFIRMED_RETEST,
+        reason: 'Break of structure was successfully retested.'
+      });
     }
 
     if (input.structureQualityScore >= 7) {
-      boosters.push({ label: 'Structure factor', points: 7, reason: 'Structure quality is strong and clean.' });
+      boosters.push({
+        label: 'Price Action Adjustment',
+        points: DECISION_ADJ_STRONG_STRUCTURE,
+        reason: 'Strong and consistent swing structure is present.'
+      });
+    }
+
+    if (
+      input.retestStatus === 'Broke then Retested' &&
+      input.supportStrength !== 'Strong' &&
+      input.resistanceStrength === 'Strong'
+    ) {
+      boosters.push({
+        label: 'Price Action Adjustment',
+        points: DECISION_ADJ_SUPPORT_REJECTION,
+        reason: 'Retest rejected from strong overhead structure.'
+      });
     }
 
     if (input.compressionState !== 'None') {
-      boosters.push({ label: 'Structure factor', points: -6, reason: `Compression detected: ${input.compressionState}.` });
+      boosters.push({
+        label: 'Price Action Adjustment',
+        points: DECISION_ADJ_COMPRESSION,
+        reason: `Compression detected: ${input.compressionState}.`
+      });
     }
 
-    if (input.chochDetected) {
-      boosters.push({ label: 'Structure factor', points: -8, reason: 'CHoCH detected against current trend.' });
+    if (input.falseBreakdown) {
+      boosters.push({
+        label: 'Price Action Adjustment',
+        points: DECISION_ADJ_FAKE_BREAKDOWN,
+        reason: 'Fake breakdown detected with reclaim above broken level.'
+      });
+    }
+
+    if (input.chochDetected || input.chochStatus === 'Bullish CHoCH') {
+      boosters.push({
+        label: 'Price Action Adjustment',
+        points: DECISION_ADJ_CHOCH_AGAINST,
+        reason: 'CHoCH detected against the active setup direction.'
+      });
+    }
+
+    if (
+      input.supportStrength === 'Strong' &&
+      input.supportDistancePercent !== null &&
+      Math.abs(input.supportDistancePercent) <= SUPPORT_DISTANCE_STRONG_WARNING_PERCENT
+    ) {
+      boosters.push({
+        label: 'Price Action Adjustment',
+        points: DECISION_ADJ_STRONG_SUPPORT_NEARBY,
+        reason: 'Major support sits directly below current price.'
+      });
+    }
+
+    if (input.trendExhaustion === 'Exhausted') {
+      boosters.push({
+        label: 'Price Action Adjustment',
+        points: DECISION_ADJ_EXHAUSTION,
+        reason: 'Trend is becoming exhausted and may pause.'
+      });
+    }
+
+    if (input.trendExhaustion === 'Parabolic') {
+      boosters.push({
+        label: 'Price Action Adjustment',
+        points: DECISION_ADJ_PARABOLIC,
+        reason: 'Move is parabolic and vulnerable to sharp reversals.'
+      });
+    }
+
+    if (input.liquidityPressure && input.liquidityDirection === 'Below') {
+      boosters.push({
+        label: 'Price Action Adjustment',
+        points: -6,
+        reason: `Price is moving directly into nearby ${input.nearestLiquidityZone.toLowerCase()}.`
+      });
     }
 
     if (input.structureQualityScore <= 4) {
-      boosters.push({ label: 'Structure factor', points: -5, reason: 'Structure quality is weak and noisy.' });
+      boosters.push({ label: 'Price Action Adjustment', points: -5, reason: 'Structure quality is weak and noisy.' });
     }
 
     return boosters;

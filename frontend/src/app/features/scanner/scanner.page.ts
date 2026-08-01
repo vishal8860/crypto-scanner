@@ -57,6 +57,7 @@ export class ScannerPageComponent implements OnInit {
 		'rank',
 		'symbol',
 		'structure',
+		'support',
 		'trendScore',
 		'entryScore',
 		'mtf',
@@ -540,6 +541,22 @@ export class ScannerPageComponent implements OnInit {
 		}
 
 		return { icon: '🔴', label: 'Weak', tone: 'red' };
+	}
+
+	protected supportChip(state: ScannerResult['supportColumnState']): ChipConfig {
+		if (state === 'Clear') {
+			return { icon: '🟢', label: 'Clear', tone: 'green' };
+		}
+
+		if (state === 'Near') {
+			return { icon: '🟡', label: 'Near', tone: 'amber' };
+		}
+
+		return { icon: '🔴', label: 'Strong Support', tone: 'red' };
+	}
+
+	protected chochLabel(summary: ScannerResult): string {
+		return summary.chochStatus === 'None' ? 'None' : summary.chochStatus;
 	}
 
 	protected timeframeSnapshot(
