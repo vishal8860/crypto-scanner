@@ -17,6 +17,7 @@ export interface TrendScoreInput {
   readonly trendAge: TrendAge;
   readonly momentumScore: number;
   readonly isBelowEMA200: boolean;
+  readonly marketStructureAdjustment: number;
 }
 
 export interface TrendScoreResult {
@@ -47,6 +48,8 @@ export class TrendScoreService {
     if (input.isBelowEMA200) {
       score += 8;
     }
+
+    score += input.marketStructureAdjustment;
 
     const trendScore = roundTo(clamp(score, SCORE_MIN, SCORE_MAX), 2);
 

@@ -7,6 +7,7 @@ import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { CandleInterval } from './candle.interface';
 import {
 	HigherTimeframeConfirmation,
+	MarketStructure,
 	MultiTimeframeSnapshot,
 	RiskLevel,
 	SlopeCategory,
@@ -263,6 +264,8 @@ export class ScannerPageComponent implements OnInit {
 
 	protected whyThisTradeBullets(summary: ScannerResult): readonly string[] {
 		const bullets: string[] = [];
+
+			bullets.push(summary.marketStructureWhySentence);
 
 		if (summary.bearishAlignment) {
 			bullets.push('Strong bearish trend structure is intact.');
@@ -531,16 +534,32 @@ export class ScannerPageComponent implements OnInit {
 		return { icon: '🟡', label: 'Neutral', tone: 'amber' };
 	}
 
-	protected structureChip(state: ScannerResult['structureColumnState']): ChipConfig {
-		if (state === 'Strong') {
-			return { icon: '🟢', label: 'Strong', tone: 'green' };
+	protected marketStructureChip(structure: MarketStructure): ChipConfig {
+		if (structure === MarketStructure.StrongBearish) {
+			return { icon: '🟥', label: 'Strong Bearish', tone: 'red' };
 		}
 
-		if (state === 'Mixed') {
-			return { icon: '🟡', label: 'Mixed', tone: 'amber' };
+		if (structure === MarketStructure.Bearish) {
+			return { icon: '🔴', label: 'Bearish', tone: 'red' };
 		}
 
-		return { icon: '🔴', label: 'Weak', tone: 'red' };
+		if (structure === MarketStructure.TransitionalBearish) {
+			return { icon: '🟠', label: 'Transition Bearish', tone: 'orange' };
+		}
+
+		if (structure === MarketStructure.Neutral) {
+			return { icon: '⚪', label: 'Neutral', tone: 'neutral' };
+		}
+
+		if (structure === MarketStructure.TransitionalBullish) {
+			return { icon: '🟡', label: 'Transition Bullish', tone: 'amber' };
+		}
+
+		if (structure === MarketStructure.Bullish) {
+			return { icon: '🟢', label: 'Bullish', tone: 'green' };
+		}
+
+		return { icon: '💚', label: 'Strong Bullish', tone: 'green' };
 	}
 
 	protected supportChip(state: ScannerResult['supportColumnState']): ChipConfig {

@@ -17,6 +17,7 @@ export interface EntryScoreInput {
   readonly suggestedEntry: number | null;
   readonly suggestedTakeProfit: number | null;
   readonly price: number;
+  readonly marketStructureEntryCap: number | null;
 }
 
 export interface EntryScoreResult {
@@ -46,7 +47,10 @@ export class EntryScoreService {
       score -= 25;
     }
 
-    const entryScore = roundTo(clamp(score, SCORE_MIN, SCORE_MAX), 2);
+    const cappedMax = input.marketStructureEntryCap === null
+      ? SCORE_MAX
+      : Math.max(SCORE_MIN, Math.min(SCORE_MAX, input.marketStructureEntryCap));
+    const entryScore = roundTo(clamp(score, SCORE_MIN, cappedMax), 2);
 
     return {
       entryScore,

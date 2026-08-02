@@ -520,3 +520,32 @@ interface IndicatorResult {
   - Compression
   - Swing Pattern
 - All thresholds are centralized in indicator constants; no magic numbers in price-action logic.
+
+## Day 14: Market Structure Engine (Professional Trend Classification)
+
+- Introduced a richer market-context classification layer before trend and entry quality interpretation.
+- Added professional market structure states:
+  - `StrongBearish`
+  - `Bearish`
+  - `TransitionalBearish`
+  - `Neutral`
+  - `TransitionalBullish`
+  - `Bullish`
+  - `StrongBullish`
+- Structure classification now considers EMA200, EMA20, price location, and EMA slope context.
+- Scanner UI now shows a colored market-structure badge instead of only compact `Strong/Mixed` structure context.
+- Trend Score is now structure-aware for bearish scanning bias:
+  - strong bearish context gets a positive bonus
+  - neutral and bullish contexts get increasing penalties
+  - strong bullish context gets the heaviest penalty
+- Entry Score now applies bearish-context caps to reduce false positives:
+  - neutral structure limits maximum entry quality
+  - bullish and strong bullish structures heavily cap or suppress bearish entry quality
+- Trade Analysis panel now includes `Market Structure` with context-aware reason text.
+- `Why this trade?` now includes a dedicated market-structure narrative sentence.
+- Ranking refinement for similar candidates now prioritizes:
+  - market structure quality first
+  - trend score second
+  - entry score third
+- Outcome:
+  - markets in bullish recovery phases are no longer surfaced as high-quality bearish continuation candidates.

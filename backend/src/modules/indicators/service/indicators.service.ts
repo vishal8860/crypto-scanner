@@ -28,6 +28,7 @@ import { LiquidityService } from './liquidity.service.js';
 import { MarketStructureService } from './market-structure.service.js';
 import { MultiTimeframeAnalysisService } from './multi-timeframe-analysis.service.js';
 import { PriceActionAnalysisService } from './price-action-analysis.service.js';
+import { ProfessionalMarketStructureService } from './professional-market-structure.service.js';
 import { SupportResistanceService } from './support-resistance.service.js';
 import { TradeDecisionService } from './trade-decision.service.js';
 import { TrendExhaustionService } from './trend-exhaustion.service.js';
@@ -121,6 +122,7 @@ export class IndicatorsService {
     private readonly liquidityService: LiquidityService = new LiquidityService(),
     private readonly trendExhaustionService: TrendExhaustionService = new TrendExhaustionService(),
     private readonly priceActionAnalysisService: PriceActionAnalysisService = new PriceActionAnalysisService(),
+    private readonly professionalMarketStructureService: ProfessionalMarketStructureService = new ProfessionalMarketStructureService(),
     private readonly multiTimeframeAnalysisService: MultiTimeframeAnalysisService = new MultiTimeframeAnalysisService(),
     private readonly tradeDecisionService: TradeDecisionService = new TradeDecisionService(),
     private readonly tradeManagementService: TradeManagementService = new TradeManagementService(),
@@ -179,6 +181,15 @@ export class IndicatorsService {
     const trendAge = resolveTrendAge(candlesSinceEMA200Cross);
     const trend = resolveTrend(price, ema9, ema20, ema200);
     const priceEfficiency = resolvePriceEfficiency(closes, price, candlesSinceEMA200Cross);
+    const professionalMarketStructure = this.professionalMarketStructureService.classify({
+      price,
+      ema20,
+      ema200,
+      ema20SlopePercent,
+      ema200SlopePercent,
+      distanceFromEMA200Percent,
+      higherTimeframeConfirmedBearish: false
+    });
     const marketStructureResult = this.marketStructureService.analyze({
       closes,
       highs,
@@ -279,7 +290,8 @@ export class IndicatorsService {
       freshCross,
       trendAge,
       momentumScore: scoreResult.momentumScore,
-      isBelowEMA200
+      isBelowEMA200,
+      marketStructureAdjustment: professionalMarketStructure.trendAdjustment
     });
     const entryScoreResult = this.entryScoreService.score({
       tradeStage: tradeStageResult.tradeStage,
@@ -287,7 +299,8 @@ export class IndicatorsService {
       riskReward: plan.riskReward,
       suggestedEntry: plan.suggestedEntry,
       suggestedTakeProfit: plan.suggestedTakeProfit,
-      price
+      price,
+      marketStructureEntryCap: professionalMarketStructure.entryScoreCap
     });
     const baseSnapshot = {
       timeframe: query.interval,
@@ -331,6 +344,15 @@ export class IndicatorsService {
 
     const higherTimeframeTrendScore =
       multiTimeframeResult.analyses.find((analysis) => analysis.timeframe !== query.interval)?.trendScore ?? null;
+    const finalProfessionalMarketStructure = this.professionalMarketStructureService.classify({
+      price,
+      ema20,
+      ema200,
+      ema20SlopePercent,
+      ema200SlopePercent,
+      distanceFromEMA200Percent,
+      higherTimeframeConfirmedBearish: multiTimeframeResult.higherTimeframeConfirmation === 'Confirmed'
+    });
 
     const tradeDecisionResult = this.tradeDecisionService.assess({
       trendScore: trendScoreResult.trendScore,
@@ -420,6 +442,10 @@ export class IndicatorsService {
       entryQuality: roundTo(plan.entryQuality, 0),
       planningReason: plan.planningReason,
       trendScore: roundTo(trendScoreResult.trendScore, 2),
+      professionalMarketStructure: finalProfessionalMarketStructure.marketStructure,
+      professionalMarketStructureReason: finalProfessionalMarketStructure.reason,
+      marketStructureWhySentence: finalProfessionalMarketStructure.whySentence,
+      marketStructurePriority: finalProfessionalMarketStructure.priority,
       trendGrade: trendScoreResult.trendGrade,
       entryScore: roundTo(entryScoreResult.entryScore, 2),
       entryGrade: entryScoreResult.entryGrade,

@@ -1880,6 +1880,58 @@ Price-action structure catches quality differences that moving averages alone ca
 
 ---
 
+## Day 14 - Market Structure Engine (Professional Trend Classification)
+
+### Objective
+
+Upgrade scanner context awareness so bearish trade qualification depends on market regime quality, not only indicator snapshots.
+
+### Core Upgrade
+
+- Replaced simplistic structure interpretation with a professional market structure classification model:
+	- `StrongBearish`
+	- `Bearish`
+	- `TransitionalBearish`
+	- `Neutral`
+	- `TransitionalBullish`
+	- `Bullish`
+	- `StrongBullish`
+- Classification now evaluates EMA200 relation, EMA20 alignment, and slope context to represent regime quality more realistically.
+
+### Scoring Integration
+
+- Trend Score now receives structure-aware adjustments to favor bearish regimes and penalize bullish regimes.
+- Entry Score now enforces bearish validity caps in non-bearish regimes:
+	- neutral context capped
+	- bullish context heavily capped
+	- strong bullish context effectively blocked for bearish continuation ideas
+- This removed a class of false positives where clean pullbacks occurred inside bullish or recovery environments.
+
+### UI/Explainability
+
+- Scanner table now displays a richer market-structure badge with directional color semantics.
+- Trade Analysis replaces coarse structure language with explicit `Market Structure` context.
+- Added structure reasoning narratives to make regime impact visible to the user.
+- `Why this trade?` now includes one structure sentence aligned with the active regime.
+
+### Ranking Refinement
+
+- Improved ordering of close candidates by prioritizing:
+	1. market structure quality
+	2. trend score
+	3. entry score
+- This ensures bearish-regime opportunities rank above structurally bullish or transitional names even when raw scores are close.
+
+### Result
+
+Scanner now behaves closer to discretionary trade selection:
+
+- first understands market context/regime
+- then evaluates trend and entry quality
+- then promotes only high-probability bearish opportunities
+
+---
+
 ## Development Score
 
 | Area | Score |
@@ -1898,4 +1950,4 @@ Price-action structure catches quality differences that moving averages alone ca
 
 ## Version
 
-v0.13.1
+v0.14.0

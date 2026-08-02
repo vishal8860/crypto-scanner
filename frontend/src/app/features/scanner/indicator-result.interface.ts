@@ -1,4 +1,13 @@
 export type Trend = 'Bullish' | 'Bearish' | 'Neutral';
+export enum MarketStructure {
+  StrongBearish = 'StrongBearish',
+  Bearish = 'Bearish',
+  TransitionalBearish = 'TransitionalBearish',
+  Neutral = 'Neutral',
+  TransitionalBullish = 'TransitionalBullish',
+  Bullish = 'Bullish',
+  StrongBullish = 'StrongBullish'
+}
 export type TrendAge = 'Fresh' | 'Developing' | 'Old';
 export type SlopeCategory = 'Strong Down' | 'Moderate Down' | 'Flat' | 'Rising';
 export type VolumeQuality = 'Poor' | 'Average' | 'Good' | 'Excellent';
@@ -143,6 +152,10 @@ export interface IndicatorResult {
   readonly entryQuality: number;
   readonly planningReason: string;
   readonly trendScore: number;
+  readonly professionalMarketStructure: MarketStructure;
+  readonly professionalMarketStructureReason: readonly string[];
+  readonly marketStructureWhySentence: string;
+  readonly marketStructurePriority: number;
   readonly trendGrade: TrendGrade;
   readonly entryScore: number;
   readonly entryGrade: EntryGrade;

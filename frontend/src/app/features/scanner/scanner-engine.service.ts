@@ -22,6 +22,7 @@ export interface ScanSummary {
 
 const SCAN_BATCH_SIZE = 8;
 const IGNORE_SCORE_THRESHOLD = 60;
+const TREND_SCORE_SIMILAR_THRESHOLD = 3;
 
 const toScannerResult = (indicator: IndicatorResult): ScannerResult => ({
   rank: 0,
@@ -61,6 +62,10 @@ const toScannerResult = (indicator: IndicatorResult): ScannerResult => ({
   entryQuality: indicator.entryQuality,
   planningReason: indicator.planningReason,
   trendScore: indicator.trendScore,
+  professionalMarketStructure: indicator.professionalMarketStructure,
+  professionalMarketStructureReason: indicator.professionalMarketStructureReason,
+  marketStructureWhySentence: indicator.marketStructureWhySentence,
+  marketStructurePriority: indicator.marketStructurePriority,
   trendGrade: indicator.trendGrade,
   entryScore: indicator.entryScore,
   entryGrade: indicator.entryGrade,
@@ -132,7 +137,26 @@ const toScannerResult = (indicator: IndicatorResult): ScannerResult => ({
 
 const rankByScore = (results: readonly ScannerResult[]): readonly ScannerResult[] =>
   [...results]
-    .sort((left, right) => right.score - left.score)
+    .sort((left, right) => {
+      const trendDiff = Math.abs(left.trendScore - right.trendScore);
+
+      if (trendDiff <= TREND_SCORE_SIMILAR_THRESHOLD) {
+        const structureDiff = left.marketStructurePriority - right.marketStructurePriority;
+        if (structureDiff !== 0) {
+          return structureDiff;
+        }
+
+        if (right.trendScore !== left.trendScore) {
+          return right.trendScore - left.trendScore;
+        }
+
+        if (right.entryScore !== left.entryScore) {
+          return right.entryScore - left.entryScore;
+        }
+      }
+
+      return right.score - left.score;
+    })
     .map((result, index) => ({ ...result, rank: index + 1 }));
 
 const applyOpportunityFilter = (results: readonly ScannerResult[]): {

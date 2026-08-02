@@ -200,3 +200,27 @@ export const DECISION_ADJ_STRONG_SUPPORT_NEARBY = -12;
 export const DECISION_ADJ_EXHAUSTION = -10;
 export const DECISION_ADJ_PARABOLIC = -14;
 export const DECISION_ADJ_COMPRESSION = -8;
+
+export const MARKET_STRUCTURE_EMA20_FLAT_THRESHOLD = 0.08;
+export const MARKET_STRUCTURE_EMA20_STRONG_RISE_THRESHOLD = 0.3;
+export const MARKET_STRUCTURE_EMA20_STRONG_DOWN_THRESHOLD = -0.3;
+export const MARKET_STRUCTURE_EMA20_SLIGHT_DOWN_THRESHOLD = -0.05;
+export const MARKET_STRUCTURE_EMA200_SLOPE_UP_THRESHOLD = 0.02;
+export const MARKET_STRUCTURE_EMA200_SLOPE_DOWN_THRESHOLD = -0.02;
+export const MARKET_STRUCTURE_EMA200_TEST_DISTANCE_PERCENT = 0.8;
+
+export const MARKET_STRUCTURE_TREND_ADJUSTMENTS = {
+  StrongBearish: 8,
+  Bearish: 4,
+  TransitionalBearish: 0,
+  Neutral: -6,
+  TransitionalBullish: -10,
+  Bullish: -20,
+  StrongBullish: -30
+} as const;
+
+export const MARKET_STRUCTURE_ENTRY_SCORE_CAPS = {
+  Neutral: 40,
+  Bullish: 20,
+  StrongBullish: 0
+} as const;

@@ -9,6 +9,7 @@ import {
   LiquidityDirection,
   LiquidityZoneType,
   MarketStructureLabel,
+  MarketStructure,
   MultiTimeframeSnapshot,
   PriceActionSnapshot,
   ProfitTarget,
@@ -75,6 +76,10 @@ export interface ScannerResult {
   readonly entryQuality: number;
   readonly planningReason: string;
   readonly trendScore: number;
+  readonly professionalMarketStructure: MarketStructure;
+  readonly professionalMarketStructureReason: readonly string[];
+  readonly marketStructureWhySentence: string;
+  readonly marketStructurePriority: number;
   readonly trendGrade: TrendGrade;
   readonly entryScore: number;
   readonly entryGrade: EntryGrade;
