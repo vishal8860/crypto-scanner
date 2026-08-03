@@ -2023,6 +2023,37 @@ Scanner now behaves more like a discretionary ranking engine:
 - only objectively poor setups are hard rejected
 - the final decision is easier to audit and tune over time
 
+---
+
+## Day 15.2 - Calibration Pass and Scanner Health Reporting
+
+### Objective
+
+Reduce the remaining conservatism in the scanner, lower the market-quality floor, and emit a calibration report after every scan.
+
+### Calibration Changes
+
+- Lowered default scanner thresholds to better match active markets:
+	- minimum market cap: `25M`
+	- minimum 24h volume: `10M`
+- Softened market-quality scoring so smaller or thinner markets are penalized instead of flattened into automatic rejection.
+- Added `debugCalibrationMode` to indicator requests so calibration logs can be enabled per scan.
+- Added a dev-only scanner health report after each scan with:
+	- rejected / weak / watch / strong / A+ counts
+	- average trend, entry, and decision scores
+	- hard blocker counts
+	- preview of the top candidates for quick review
+- Added a support contribution to the trade-decision score breakdown so the final score is easier to audit.
+
+### Validation
+
+- Backend build: passed
+- Frontend build: passed
+
+### Result
+
+Scanner calibration now exposes enough health data to compare outcomes against chart judgment immediately after each scan.
+
 ## Version
 
-v0.15.0
+v0.15.1

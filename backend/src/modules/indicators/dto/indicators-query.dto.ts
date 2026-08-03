@@ -7,4 +7,5 @@ export interface IndicatorsQueryDto {
   readonly marketVolume24hUsd?: number;
   readonly minimumMarketCapUsd?: number;
   readonly minimumVolume24hUsd?: number;
+  readonly debugCalibrationMode?: boolean;
 }

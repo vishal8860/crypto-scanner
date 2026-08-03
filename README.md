@@ -596,3 +596,20 @@ interface IndicatorResult {
   - hard blockers
 - Outcome:
   - strong bearish trends with acceptable entries are now more likely to land in `Watch` or `Strong` instead of defaulting to `Avoid`.
+
+## Day 15.2: Calibration Pass and Scanner Health Reporting
+
+- Tightened the decision engine further so a `70`-class setup is no longer pushed into `Avoid` by conservative guardrails.
+- Lowered default market-quality thresholds to better match the live scanner population:
+  - market cap default minimum: `25M`
+  - daily volume default minimum: `10M`
+- Softened market-quality scoring so `smallCap` and `thin` markets are penalized, but not automatically flattened.
+- Added `debugCalibrationMode` to the indicator request so calibration output can be enabled per scan.
+- Added a dev-only scanner health report after each scan with:
+  - rejected / weak / watch / strong / A+ counts
+  - average trend, entry, and decision scores
+  - hard blocker counts
+  - top candidate preview for quick review
+- Added a support contribution line to the decision breakdown so the final score is easier to audit.
+- Outcome:
+  - the scanner now ranks opportunities more like a discretionary trader and surfaces calibration data immediately after each scan.

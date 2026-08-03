@@ -1,6 +1,7 @@
 import { AppError } from '../../../common/errors/app-error.js';
 import { CANDLE_DEFAULT_LIMIT } from '../../candles/constants/candle.constants.js';
 import { CandlesService } from '../../candles/service/candles.service.js';
+import { environment } from '../../../config/environment.js';
 import { IndicatorsQueryDto } from '../dto/indicators-query.dto.js';
 import { IndicatorsResponseDto } from '../dto/indicators-response.dto.js';
 import {
@@ -384,9 +385,14 @@ export class IndicatorsService {
       supportDistancePercent: supportResistanceResult.supportDistancePercent,
       marketQuality: marketQualityResult.marketQuality,
       marketQualityScore: marketQualityResult.marketQualityScore
+      ,marketCapUsd: query.marketCapUsd ?? null,
+      minimumMarketCapUsd: marketQualityResult.minimumMarketCapUsd,
+      marketVolume24hUsd: query.marketVolume24hUsd ?? null,
+      minimumVolume24hUsd: marketQualityResult.minimumVolume24hUsd,
+      professionalMarketStructure: finalProfessionalMarketStructure.marketStructure
     });
 
-    if (DEBUG_CALIBRATION_MODE) {
+    if ((query.debugCalibrationMode ?? (environment.nodeEnv !== 'production')) || DEBUG_CALIBRATION_MODE) {
       console.info('[calibration]', {
         symbol: query.symbol,
         trendScore: roundTo(trendScoreResult.trendScore, 2),

@@ -7,8 +7,8 @@ export interface ScannerSettings {
 
 const STORAGE_KEY = 'vishal-scanner-settings';
 const DEFAULT_SETTINGS: ScannerSettings = {
-  minimumMarketCapUsd: 100_000_000,
-  minimumVolume24hUsd: 50_000_000
+  minimumMarketCapUsd: 25_000_000,
+  minimumVolume24hUsd: 10_000_000
 };
 
 @Injectable({ providedIn: 'root' })

@@ -1,4 +1,5 @@
 import { Injectable, signal } from '@angular/core';
+import { environment } from '../../../environments/environment';
 import { ScannerSettingsService } from '../../core/services/scanner-settings.service';
 import { CandleInterval } from './candle.interface';
 import { IndicatorResult } from './indicator-result.interface';
@@ -301,6 +302,17 @@ export class ScannerEngineService {
         strong: strongCount,
         aPlus: aPlusCount
       });
+
+      this.logCalibrationReport(rankedAll, {
+        marketsScanned: total,
+        eligible: eligibleCount,
+        rejected: avoidCount,
+        avoid: avoidCount,
+        weak: weakCount,
+        watch: watchCount,
+        strong: strongCount,
+        aPlus: aPlusCount
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to scan markets';
       this.errorState.set(message);
@@ -327,5 +339,58 @@ export class ScannerEngineService {
     } catch {
       return null;
     }
+  }
+
+  private logCalibrationReport(results: readonly ScannerResult[], summary: ScanSummary): void {
+    if (environment.production) {
+      return;
+    }
+
+    const average = (values: readonly number[]): number => {
+      if (values.length === 0) {
+        return 0;
+      }
+
+      return values.reduce((total, value) => total + value, 0) / values.length;
+    };
+
+    const hardBlockerCounts = {
+      lowLiquidity: results.filter((result) => result.tradeDecisionBlockers.some((item) => item.includes('Liquidity below minimum'))).length,
+      lowMarketCap: results.filter((result) => result.tradeDecisionBlockers.some((item) => item.includes('Market cap below minimum'))).length,
+      poorRiskReward: results.filter((result) => result.tradeDecisionBlockers.some((item) => item.includes('Risk Reward below minimum'))).length,
+      weakMtf: results.filter((result) => result.tradeDecisionBlockers.some((item) => item.includes('MTF conflict'))).length,
+      lowEntryScore: results.filter((result) => result.tradeDecisionBlockers.some((item) => item.includes('Entry score below configured minimum'))).length
+    };
+
+    const rejectedRatio = summary.marketsScanned === 0 ? 0 : summary.avoid / summary.marketsScanned;
+    const strongRatio = summary.marketsScanned === 0 ? 0 : (summary.strong + summary.aPlus) / summary.marketsScanned;
+
+    let calibrationStatus: 'Healthy' | 'Too Strict' | 'Too Loose' = 'Healthy';
+    if (rejectedRatio > 0.9 || strongRatio < 0.01) {
+      calibrationStatus = 'Too Strict';
+    } else if (rejectedRatio < 0.7 && strongRatio > 0.08) {
+      calibrationStatus = 'Too Loose';
+    }
+
+    console.info('========== Scanner Health ==========', {
+      marketsScanned: summary.marketsScanned,
+      rejected: summary.avoid,
+      weak: summary.weak,
+      watch: summary.watch,
+      strong: summary.strong,
+      aPlus: summary.aPlus,
+      averageTrendScore: average(results.map((result) => result.trendScore)).toFixed(2),
+      averageEntryScore: average(results.map((result) => result.entryScore)).toFixed(2),
+      averageDecisionScore: average(results.map((result) => result.tradeDecisionScore)).toFixed(2),
+      hardBlockers: hardBlockerCounts,
+      calibrationStatus,
+      preview: results.slice(0, 10).map((result) => ({
+        symbol: result.symbol,
+        decisionScore: result.tradeDecisionScore,
+        finalDecision: result.tradeDecisionVerdict,
+        blockers: result.tradeDecisionBlockers,
+        recommendation: result.finalRecommendation
+      }))
+    });
   }
 }

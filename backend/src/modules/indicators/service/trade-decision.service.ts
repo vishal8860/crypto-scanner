@@ -1,10 +1,12 @@
 import {
   DECISION_EXTREME_EXTENSION_PERCENT,
+  DECISION_HARD_BLOCK_ENTRY_SCORE_MIN,
   DECISION_HARD_BLOCK_RISK_REWARD_MIN,
   DECISION_MAJOR_SUPPORT_DISTANCE_PERCENT,
   DECISION_NEAR_SUPPORT_DISTANCE_PERCENT,
   DECISION_NEAR_SUPPORT_PENALTY,
   DECISION_SLIGHT_EXTENSION_PENALTY,
+  MARKET_STRUCTURE_ENTRY_SCORE_CAPS,
   TRADE_DECISION_A_PLUS_MIN,
   TRADE_DECISION_STRONG_MIN,
   TRADE_DECISION_WATCH_MIN,
@@ -14,6 +16,7 @@ import {
 import {
   ExtensionState,
   HigherTimeframeConfirmation,
+  MarketStructure,
   MarketQuality,
   PullbackQuality,
   RiskRewardBand,
@@ -43,7 +46,12 @@ export interface TradeDecisionInput {
   readonly higherTimeframeConfirmation: HigherTimeframeConfirmation;
   readonly marketQuality: MarketQuality;
   readonly marketQualityScore: number;
+  readonly marketCapUsd: number | null;
+  readonly minimumMarketCapUsd: number;
+  readonly marketVolume24hUsd: number | null;
+  readonly minimumVolume24hUsd: number;
   readonly supportDistancePercent: number | null;
+  readonly professionalMarketStructure: MarketStructure;
 }
 
 export interface TradeDecisionResult {
@@ -70,10 +78,11 @@ export class TradeDecisionService {
     const pullbackQuality = this.resolvePullbackQuality(input.tradeStage, input.distanceFromEMA20Percent);
     const extensionState = this.resolveExtensionState(input.distanceFromEMA20Percent, input.distanceFromEMA200Percent);
     const blockers = this.resolveHardBlockers(input, extensionState);
+    const marketStructureEntryCap = this.resolveMarketStructureEntryCap(input.professionalMarketStructure);
 
     const componentScores = {
       trendScore: input.trendScore,
-      entryScore: input.entryScore,
+      entryScore: Math.min(input.entryScore, marketStructureEntryCap),
       multiTimeframeScore: this.multiTimeframeScore(input.higherTimeframeConfirmation),
       marketQualityScore: input.marketQualityScore,
       riskRewardScore: this.riskRewardBandScore(riskRewardBand)
@@ -152,8 +161,13 @@ export class TradeDecisionService {
       blockers.push('Risk Reward below minimum threshold.');
     }
 
-    if (input.marketQuality === 'Avoid') {
-      blockers.push('Market Quality below threshold.');
+    if (input.marketCapUsd !== null && input.marketCapUsd < input.minimumMarketCapUsd) {
+      blockers.push('Market cap below minimum threshold.');
+    }
+
+    if (input.marketVolume24hUsd !== null && input.marketVolume24hUsd < input.minimumVolume24hUsd) {
+      blockers.push('Liquidity below minimum threshold.');
+      blockers.push('Daily volume below minimum threshold.');
     }
 
     if (input.higherTimeframeConfirmation === 'Counter Trend') {
@@ -174,6 +188,17 @@ export class TradeDecisionService {
       blockers.push('Price is already extremely extended outside the acceptable zone.');
     }
 
+    if (input.entryScore < DECISION_HARD_BLOCK_ENTRY_SCORE_MIN) {
+      blockers.push('Entry score below configured minimum.');
+    }
+
+    if (
+      input.professionalMarketStructure === MarketStructure.StrongBullish ||
+      input.professionalMarketStructure === MarketStructure.Bullish
+    ) {
+      blockers.push('Invalid trend structure for bearish continuation.');
+    }
+
     return blockers;
   }
 
@@ -182,6 +207,32 @@ export class TradeDecisionService {
     extensionState: ExtensionState
   ): readonly TradeDecisionAdjustment[] {
     const penalties: TradeDecisionAdjustment[] = [];
+
+    penalties.push({
+      label: 'Support Contribution',
+      points: this.supportContribution(input.supportDistancePercent),
+      reason: input.supportDistancePercent !== null
+        ? `Nearest support is ${Math.abs(input.supportDistancePercent).toFixed(2)}% away.`
+        : 'Support distance is unavailable.'
+    });
+
+    penalties.push({
+      label: 'Freshness Contribution',
+      points: this.freshnessContribution(input),
+      reason: input.freshCross ? 'Fresh trend transition still has edge.' : 'Trend is aging and losing freshness.'
+    });
+
+    penalties.push({
+      label: 'Volume Contribution',
+      points: this.volumeContribution(input.volumeQuality),
+      reason: `Volume quality is ${input.volumeQuality}.`
+    });
+
+    penalties.push({
+      label: 'Momentum Contribution',
+      points: this.momentumContribution(input.trendStrengthScore),
+      reason: 'Directional momentum is being translated into the decision score.'
+    });
 
     if (
       input.supportDistancePercent !== null &&
@@ -261,6 +312,88 @@ export class TradeDecisionService {
     });
 
     return items;
+  }
+
+  private resolveMarketStructureEntryCap(structure: MarketStructure): number {
+    if (structure === MarketStructure.Neutral) {
+      return MARKET_STRUCTURE_ENTRY_SCORE_CAPS.Neutral;
+    }
+
+    if (structure === MarketStructure.Bullish) {
+      return MARKET_STRUCTURE_ENTRY_SCORE_CAPS.Bullish;
+    }
+
+    if (structure === MarketStructure.StrongBullish) {
+      return MARKET_STRUCTURE_ENTRY_SCORE_CAPS.StrongBullish;
+    }
+
+    return 100;
+  }
+
+  private freshnessContribution(input: TradeDecisionInput): number {
+    if (input.freshCross) {
+      return 3;
+    }
+
+    if (input.trendAge === 'Developing') {
+      return 1;
+    }
+
+    return -2;
+  }
+
+  private volumeContribution(volumeQuality: VolumeQuality): number {
+    if (volumeQuality === 'Excellent') {
+      return 5;
+    }
+
+    if (volumeQuality === 'Good') {
+      return 3;
+    }
+
+    if (volumeQuality === 'Average') {
+      return 0;
+    }
+
+    return -4;
+  }
+
+  private momentumContribution(trendStrengthScore: number): number {
+    if (trendStrengthScore >= 8) {
+      return 4;
+    }
+
+    if (trendStrengthScore >= 6) {
+      return 2;
+    }
+
+    if (trendStrengthScore >= 4) {
+      return 0;
+    }
+
+    return -2;
+  }
+
+  private supportContribution(supportDistancePercent: number | null): number {
+    if (supportDistancePercent === null) {
+      return 0;
+    }
+
+    const distance = Math.abs(supportDistancePercent);
+
+    if (distance <= DECISION_MAJOR_SUPPORT_DISTANCE_PERCENT) {
+      return -4;
+    }
+
+    if (distance <= DECISION_NEAR_SUPPORT_DISTANCE_PERCENT) {
+      return -2;
+    }
+
+    if (distance <= 3) {
+      return 1;
+    }
+
+    return 4;
   }
 
   private resolveMultiTimeframeReason(confirmation: HigherTimeframeConfirmation): string {

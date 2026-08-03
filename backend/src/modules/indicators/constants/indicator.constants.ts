@@ -142,6 +142,7 @@ export const DECISION_ENTRY_POOR_EMA20_DISTANCE_MIN = 2.4;
 export const DECISION_MAX_ABS_EMA200_DISTANCE_PERCENT = 9;
 export const DECISION_MAX_ABS_EMA20_EXTENSION_PERCENT = 2.4;
 export const DECISION_HARD_BLOCK_RISK_REWARD_MIN = 1.6;
+export const DECISION_HARD_BLOCK_ENTRY_SCORE_MIN = 20;
 export const DECISION_DIRECTIONAL_MOVEMENT_MIN = 6;
 export const DECISION_OLD_TREND_CANDLES_MIN = 20;
 export const DECISION_MAJOR_SUPPORT_DISTANCE_PERCENT = 0.7;
@@ -231,15 +232,15 @@ export const MARKET_STRUCTURE_ENTRY_SCORE_CAPS = {
   StrongBullish: 0
 } as const;
 
-export const MARKET_QUALITY_DEFAULT_MIN_MARKET_CAP_USD = 100_000_000;
-export const MARKET_QUALITY_DEFAULT_MIN_VOLUME_USD = 50_000_000;
+export const MARKET_QUALITY_DEFAULT_MIN_MARKET_CAP_USD = 25_000_000;
+export const MARKET_QUALITY_DEFAULT_MIN_VOLUME_USD = 10_000_000;
 
 export const MARKET_QUALITY_MARKET_CAP_SCORES = {
   megaCap: 15,
   largeCap: 10,
   midCap: 5,
-  smallCap: 0,
-  microCap: -20
+  smallCap: 2,
+  microCap: -15
 } as const;
 
 export const MARKET_QUALITY_VOLUME_SCORES = {
@@ -247,10 +248,10 @@ export const MARKET_QUALITY_VOLUME_SCORES = {
   high: 8,
   medium: 5,
   low: 2,
-  thin: -10
+  thin: -8
 } as const;
 
 export const MARKET_QUALITY_EXCELLENT_MIN = 85;
 export const MARKET_QUALITY_GOOD_MIN = 70;
 export const MARKET_QUALITY_AVERAGE_MIN = 55;
-export const MARKET_QUALITY_RISKY_MIN = 40;
+export const MARKET_QUALITY_RISKY_MIN = 35;

@@ -46,6 +46,22 @@ const toOptionalNumber = (value: string | undefined, label: string): number | un
   return parsed;
 };
 
+const toOptionalBoolean = (value: string | undefined): boolean | undefined => {
+  if (value === undefined || value.trim() === '') {
+    return undefined;
+  }
+
+  if (value === 'true') {
+    return true;
+  }
+
+  if (value === 'false') {
+    return false;
+  }
+
+  throw new AppError(400, 'debugCalibrationMode must be true or false');
+};
+
 export const createIndicatorsRouter = (): Router => {
   const router = Router();
   const service = new IndicatorsService();
@@ -57,7 +73,8 @@ export const createIndicatorsRouter = (): Router => {
       marketCapUsd: toOptionalNumber(typeof request.query.marketCapUsd === 'string' ? request.query.marketCapUsd : undefined, 'marketCapUsd'),
       marketVolume24hUsd: toOptionalNumber(typeof request.query.marketVolume24hUsd === 'string' ? request.query.marketVolume24hUsd : undefined, 'marketVolume24hUsd'),
       minimumMarketCapUsd: toOptionalNumber(typeof request.query.minimumMarketCapUsd === 'string' ? request.query.minimumMarketCapUsd : undefined, 'minimumMarketCapUsd'),
-      minimumVolume24hUsd: toOptionalNumber(typeof request.query.minimumVolume24hUsd === 'string' ? request.query.minimumVolume24hUsd : undefined, 'minimumVolume24hUsd')
+      minimumVolume24hUsd: toOptionalNumber(typeof request.query.minimumVolume24hUsd === 'string' ? request.query.minimumVolume24hUsd : undefined, 'minimumVolume24hUsd'),
+      debugCalibrationMode: toOptionalBoolean(typeof request.query.debugCalibrationMode === 'string' ? request.query.debugCalibrationMode : undefined)
     };
 
     const payload: IndicatorsResponseDto = await service.getForMarket(query);

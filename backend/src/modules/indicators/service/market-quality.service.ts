@@ -42,7 +42,7 @@ export class MarketQualityService {
     const marketCapPoints = this.marketCapPoints(input.marketCapUsd, reasons, minimumMarketCapUsd);
     const volumePoints = this.volumePoints(input.marketVolume24hUsd, reasons, minimumVolume24hUsd);
     const rawPoints = marketCapPoints + volumePoints;
-    const marketQualityScore = roundTo(clamp(((rawPoints + 30) / 55) * 100, SCORE_MIN, SCORE_MAX), 2);
+    const marketQualityScore = roundTo(clamp(((rawPoints + 25) / 50) * 100, SCORE_MIN, SCORE_MAX), 2);
 
     return {
       marketQuality: this.resolveLabel(marketQualityScore),
