@@ -114,25 +114,25 @@ export const TREND_SCORE_GOOD_MIN = 70;
 export const TREND_SCORE_AVERAGE_MIN = 55;
 
 export const ENTRY_SCORE_READY_MIN = 80;
-export const ENTRY_SCORE_WATCH_MIN = 65;
-export const ENTRY_SCORE_DEVELOPING_MIN = 50;
+export const ENTRY_SCORE_WATCH_MIN = 60;
+export const ENTRY_SCORE_DEVELOPING_MIN = 30;
 
 export const VERDICT_READY_TREND_MIN = 85;
 export const VERDICT_READY_ENTRY_MIN = 80;
 export const VERDICT_DEVELOPING_TREND_MIN = 70;
 
 export const TRADE_DECISION_WEIGHTS = {
-  trendScore: 0.35,
-  entryScore: 0.35,
-  riskReward: 0.15,
-  volumeQuality: 0.1,
-  tradeStage: 0.05
+  trendScore: 0.4,
+  entryScore: 0.3,
+  multiTimeframe: 0.1,
+  marketQuality: 0.1,
+  riskReward: 0.1
 } as const;
 
-export const TRADE_DECISION_A_PLUS_MIN = 85;
-export const TRADE_DECISION_STRONG_MIN = 72;
-export const TRADE_DECISION_WATCH_MIN = 58;
-export const TRADE_DECISION_WEAK_MIN = 45;
+export const TRADE_DECISION_A_PLUS_MIN = 95;
+export const TRADE_DECISION_STRONG_MIN = 85;
+export const TRADE_DECISION_WATCH_MIN = 70;
+export const TRADE_DECISION_WEAK_MIN = 55;
 
 export const DECISION_TREND_MIN_STRENGTH = 6;
 export const DECISION_TREND_MAX_SIDEWAYS_SCORE = 55;
@@ -144,6 +144,12 @@ export const DECISION_MAX_ABS_EMA20_EXTENSION_PERCENT = 2.4;
 export const DECISION_HARD_BLOCK_RISK_REWARD_MIN = 1.6;
 export const DECISION_DIRECTIONAL_MOVEMENT_MIN = 6;
 export const DECISION_OLD_TREND_CANDLES_MIN = 20;
+export const DECISION_MAJOR_SUPPORT_DISTANCE_PERCENT = 0.7;
+export const DECISION_NEAR_SUPPORT_DISTANCE_PERCENT = 1.4;
+export const DECISION_EXTREME_EXTENSION_PERCENT = 3.2;
+export const DECISION_NEAR_SUPPORT_PENALTY = -4;
+export const DECISION_SLIGHT_EXTENSION_PENALTY = -4;
+export const DEBUG_CALIBRATION_MODE = false;
 
 export const STRUCTURE_SWING_WINDOW = 2;
 export const STRUCTURE_LOOKBACK_LIMIT = 80;
@@ -224,3 +230,27 @@ export const MARKET_STRUCTURE_ENTRY_SCORE_CAPS = {
   Bullish: 20,
   StrongBullish: 0
 } as const;
+
+export const MARKET_QUALITY_DEFAULT_MIN_MARKET_CAP_USD = 100_000_000;
+export const MARKET_QUALITY_DEFAULT_MIN_VOLUME_USD = 50_000_000;
+
+export const MARKET_QUALITY_MARKET_CAP_SCORES = {
+  megaCap: 15,
+  largeCap: 10,
+  midCap: 5,
+  smallCap: 0,
+  microCap: -20
+} as const;
+
+export const MARKET_QUALITY_VOLUME_SCORES = {
+  ultra: 10,
+  high: 8,
+  medium: 5,
+  low: 2,
+  thin: -10
+} as const;
+
+export const MARKET_QUALITY_EXCELLENT_MIN = 85;
+export const MARKET_QUALITY_GOOD_MIN = 70;
+export const MARKET_QUALITY_AVERAGE_MIN = 55;
+export const MARKET_QUALITY_RISKY_MIN = 40;

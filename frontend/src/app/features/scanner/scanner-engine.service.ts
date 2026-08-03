@@ -1,4 +1,5 @@
 import { Injectable, signal } from '@angular/core';
+import { ScannerSettingsService } from '../../core/services/scanner-settings.service';
 import { CandleInterval } from './candle.interface';
 import { IndicatorResult } from './indicator-result.interface';
 import { IndicatorsService } from './indicators.service';
@@ -15,9 +16,11 @@ export interface ScanSummary {
   readonly marketsScanned: number;
   readonly eligible: number;
   readonly rejected: number;
-  readonly highPriority: number;
-  readonly mediumPriority: number;
-  readonly lowPriority: number;
+  readonly avoid: number;
+  readonly weak: number;
+  readonly watch: number;
+  readonly strong: number;
+  readonly aPlus: number;
 }
 
 const SCAN_BATCH_SIZE = 8;
@@ -72,7 +75,13 @@ const toScannerResult = (indicator: IndicatorResult): ScannerResult => ({
   tradeVerdict: indicator.tradeVerdict,
   tradeDecisionScore: indicator.tradeDecisionScore,
   tradeDecisionVerdict: indicator.tradeDecisionVerdict,
+  tradeDecisionBlockers: indicator.tradeDecisionBlockers,
   riskRewardBand: indicator.riskRewardBand,
+  marketQuality: indicator.marketQuality,
+  marketQualityScore: indicator.marketQualityScore,
+  marketQualityReasons: indicator.marketQualityReasons,
+  marketCapUsd: indicator.marketCapUsd,
+  marketVolume24hUsd: indicator.marketVolume24hUsd,
   pullbackQuality: indicator.pullbackQuality,
   extensionState: indicator.extensionState,
   tradeDecisionAdjustments: indicator.tradeDecisionAdjustments,
@@ -162,25 +171,31 @@ const rankByScore = (results: readonly ScannerResult[]): readonly ScannerResult[
 const applyOpportunityFilter = (results: readonly ScannerResult[]): {
   readonly filtered: readonly ScannerResult[];
   readonly eligibleCount: number;
-  readonly highPriorityCount: number;
-  readonly mediumPriorityCount: number;
-  readonly lowPriorityCount: number;
+  readonly avoidCount: number;
+  readonly weakCount: number;
+  readonly watchCount: number;
+  readonly strongCount: number;
+  readonly aPlusCount: number;
 } => {
   const eligible = results.filter((result) => result.eligible);
   const visible = eligible.filter(
     (result) => !(result.trendScore < IGNORE_SCORE_THRESHOLD && result.entryScore < IGNORE_SCORE_THRESHOLD)
   );
   const filtered = rankByScore(visible);
-  const highPriorityCount = visible.filter((result) => result.priority === 'High').length;
-  const mediumPriorityCount = visible.filter((result) => result.priority === 'Medium').length;
-  const lowPriorityCount = visible.filter((result) => result.priority === 'Low').length;
+  const avoidCount = results.filter((result) => result.tradeDecisionVerdict === 'AVOID').length;
+  const weakCount = results.filter((result) => result.tradeDecisionVerdict === 'WEAK').length;
+  const watchCount = results.filter((result) => result.tradeDecisionVerdict === 'WATCH').length;
+  const strongCount = results.filter((result) => result.tradeDecisionVerdict === 'STRONG_SETUP').length;
+  const aPlusCount = results.filter((result) => result.tradeDecisionVerdict === 'A_PLUS_SETUP').length;
 
   return {
     filtered,
     eligibleCount: visible.length,
-    highPriorityCount,
-    mediumPriorityCount,
-    lowPriorityCount
+    avoidCount,
+    weakCount,
+    watchCount,
+    strongCount,
+    aPlusCount
   };
 };
 
@@ -203,7 +218,8 @@ export class ScannerEngineService {
 
   public constructor(
     private readonly marketsService: MarketsService,
-    private readonly indicatorsService: IndicatorsService
+    private readonly indicatorsService: IndicatorsService,
+    private readonly scannerSettingsService: ScannerSettingsService
   ) {}
 
   public async scan(interval: CandleInterval): Promise<void> {
@@ -236,9 +252,11 @@ export class ScannerEngineService {
           marketsScanned: 0,
           eligible: 0,
           rejected: 0,
-          highPriority: 0,
-          mediumPriority: 0,
-          lowPriority: 0
+          avoid: 0,
+          weak: 0,
+          watch: 0,
+          strong: 0,
+          aPlus: 0
         });
         return;
       }
@@ -264,9 +282,11 @@ export class ScannerEngineService {
       const {
         filtered,
         eligibleCount,
-        highPriorityCount,
-        mediumPriorityCount,
-        lowPriorityCount
+        avoidCount,
+        weakCount,
+        watchCount,
+        strongCount,
+        aPlusCount
       } = applyOpportunityFilter(rankedAll);
 
       this.allResultsState.set(rankedAll);
@@ -274,10 +294,12 @@ export class ScannerEngineService {
       this.summaryState.set({
         marketsScanned: total,
         eligible: eligibleCount,
-        rejected: total - eligibleCount,
-        highPriority: highPriorityCount,
-        mediumPriority: mediumPriorityCount,
-        lowPriority: lowPriorityCount
+        rejected: avoidCount,
+        avoid: avoidCount,
+        weak: weakCount,
+        watch: watchCount,
+        strong: strongCount,
+        aPlus: aPlusCount
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to scan markets';
@@ -296,7 +318,11 @@ export class ScannerEngineService {
     interval: CandleInterval
   ): Promise<ScannerResult | null> {
     try {
-      const indicator = await this.indicatorsService.getIndicators(market.symbol, interval);
+      const indicator = await this.indicatorsService.getIndicators(market.symbol, interval, {
+        marketCapUsd: market.marketCapUsd,
+        marketVolume24hUsd: market.volume,
+        settings: this.scannerSettingsService.settings()
+      });
       return toScannerResult(indicator);
     } catch {
       return null;

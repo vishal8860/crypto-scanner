@@ -8,6 +8,7 @@ export enum MarketStructure {
   Bullish = 'Bullish',
   StrongBullish = 'StrongBullish'
 }
+export type MarketQuality = 'Excellent' | 'Good' | 'Average' | 'Risky' | 'Avoid';
 export type TrendAge = 'Fresh' | 'Developing' | 'Old';
 export type SlopeCategory = 'Strong Down' | 'Moderate Down' | 'Flat' | 'Rising';
 export type VolumeQuality = 'Poor' | 'Average' | 'Good' | 'Excellent';
@@ -162,7 +163,13 @@ export interface IndicatorResult {
   readonly tradeVerdict: TradeVerdict;
   readonly tradeDecisionScore: number;
   readonly tradeDecisionVerdict: TradeDecisionVerdict;
+  readonly tradeDecisionBlockers: readonly string[];
   readonly riskRewardBand: RiskRewardBand;
+  readonly marketQuality: MarketQuality;
+  readonly marketQualityScore: number;
+  readonly marketQualityReasons: readonly string[];
+  readonly marketCapUsd: number | null;
+  readonly marketVolume24hUsd: number | null;
   readonly pullbackQuality: PullbackQuality;
   readonly extensionState: ExtensionState;
   readonly tradeDecisionAdjustments: readonly TradeDecisionAdjustment[];

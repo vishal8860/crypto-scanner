@@ -10,6 +10,7 @@ import {
   LiquidityZoneType,
   MarketStructureLabel,
   MarketStructure,
+  MarketQuality,
   MultiTimeframeSnapshot,
   PriceActionSnapshot,
   ProfitTarget,
@@ -86,7 +87,13 @@ export interface ScannerResult {
   readonly tradeVerdict: TradeVerdict;
   readonly tradeDecisionScore: number;
   readonly tradeDecisionVerdict: TradeDecisionVerdict;
+  readonly tradeDecisionBlockers: readonly string[];
   readonly riskRewardBand: RiskRewardBand;
+  readonly marketQuality: MarketQuality;
+  readonly marketQualityScore: number;
+  readonly marketQualityReasons: readonly string[];
+  readonly marketCapUsd: number | null;
+  readonly marketVolume24hUsd: number | null;
   readonly pullbackQuality: PullbackQuality;
   readonly extensionState: ExtensionState;
   readonly tradeDecisionAdjustments: readonly TradeDecisionAdjustment[];

@@ -1,6 +1,7 @@
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { ScannerSettings } from '../../core/services/scanner-settings.service';
 import { CandleInterval } from './candle.interface';
 import { IndicatorResult } from './indicator-result.interface';
 
@@ -12,11 +13,23 @@ interface IndicatorsResponse {
 export class IndicatorsService {
   public constructor(private readonly http: HttpClient) {}
 
-  public async getIndicators(symbol: string, interval: CandleInterval): Promise<IndicatorResult> {
+  public async getIndicators(
+    symbol: string,
+    interval: CandleInterval,
+    options?: {
+      readonly marketCapUsd?: number | null;
+      readonly marketVolume24hUsd?: number | null;
+      readonly settings?: ScannerSettings;
+    }
+  ): Promise<IndicatorResult> {
     const params = new HttpParams({
       fromObject: {
         symbol,
-        interval
+        interval,
+        marketCapUsd: options?.marketCapUsd == null ? '' : String(options.marketCapUsd),
+        marketVolume24hUsd: options?.marketVolume24hUsd == null ? '' : String(options.marketVolume24hUsd),
+        minimumMarketCapUsd: options?.settings ? String(options.settings.minimumMarketCapUsd) : '',
+        minimumVolume24hUsd: options?.settings ? String(options.settings.minimumVolume24hUsd) : ''
       }
     });
 

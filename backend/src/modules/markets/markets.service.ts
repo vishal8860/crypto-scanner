@@ -1,3 +1,4 @@
+import { AssetMetadataService } from './asset-metadata.service.js';
 import { CoinDcxApiService } from './coindcx-api.service.js';
 import { MarketDto } from './market.dto.js';
 
@@ -18,13 +19,21 @@ const pairToSymbol = (pair: string): string => {
 };
 
 export class MarketsService {
-	public constructor(private readonly coinDcxApiService: CoinDcxApiService = new CoinDcxApiService()) {}
+	public constructor(
+		private readonly coinDcxApiService: CoinDcxApiService = new CoinDcxApiService(),
+		private readonly assetMetadataService: AssetMetadataService = new AssetMetadataService()
+	) {}
 
 	public async list(): Promise<readonly MarketDto[]> {
 		const [instruments, ticker] = await Promise.all([
 			this.coinDcxApiService.getActiveFuturesInstruments(),
 			this.coinDcxApiService.getTicker()
 		]);
+		const baseSymbols = instruments
+			.map((instrument) => pairToSymbol(instrument))
+			.filter((symbol) => symbol.length > 4)
+			.map((symbol) => symbol.replace(/USDT$/i, '').replace(/INR$/i, ''));
+		const marketCapsByBaseSymbol = await this.assetMetadataService.getMarketCapsBySymbols(baseSymbols);
 
 		const tickerBySymbol = new Map(ticker.map((entry) => [entry.market, entry]));
 		const uniqueSymbols = new Set<string>();
@@ -45,6 +54,7 @@ export class MarketsService {
 				lastPrice: tickerEntry ? parseNumber(tickerEntry.last_price) : null,
 				change24HourPercent: tickerEntry ? parseNumber(tickerEntry.change_24_hour) : null,
 				volume: tickerEntry ? parseNumber(tickerEntry.volume) : null,
+				marketCapUsd: marketCapsByBaseSymbol.get(symbol.replace(/USDT$/i, '').replace(/INR$/i, '')) ?? null,
 				status: 'active'
 			});
 		}

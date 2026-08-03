@@ -4,6 +4,7 @@ import { CandlesService } from '../../candles/service/candles.service.js';
 import { IndicatorsQueryDto } from '../dto/indicators-query.dto.js';
 import { IndicatorsResponseDto } from '../dto/indicators-response.dto.js';
 import {
+  DEBUG_CALIBRATION_MODE,
   EMA_PERIODS,
   EMA200_SLOPE_LOOKBACK,
   EMA9_SLOPE_LOOKBACK,
@@ -25,6 +26,7 @@ import { countCandlesSinceEMA200Cross } from '../utils/count-candles-since-ema20
 import { resolveTrendAge } from '../utils/resolve-trend-age.js';
 import { EntryScoreService } from './entry-score.service.js';
 import { LiquidityService } from './liquidity.service.js';
+import { MarketQualityService } from './market-quality.service.js';
 import { MarketStructureService } from './market-structure.service.js';
 import { MultiTimeframeAnalysisService } from './multi-timeframe-analysis.service.js';
 import { PriceActionAnalysisService } from './price-action-analysis.service.js';
@@ -117,6 +119,7 @@ export class IndicatorsService {
     private readonly trendScoringService: TrendScoringService = new TrendScoringService(),
     private readonly trendScoreService: TrendScoreService = new TrendScoreService(),
     private readonly entryScoreService: EntryScoreService = new EntryScoreService(),
+    private readonly marketQualityService: MarketQualityService = new MarketQualityService(),
     private readonly marketStructureService: MarketStructureService = new MarketStructureService(),
     private readonly supportResistanceService: SupportResistanceService = new SupportResistanceService(),
     private readonly liquidityService: LiquidityService = new LiquidityService(),
@@ -221,6 +224,12 @@ export class IndicatorsService {
       liquidity: liquidityResult,
       trendExhaustion: trendExhaustionResult,
       recentSwingPoints: marketStructureResult.recentSwingPoints
+    });
+    const marketQualityResult = this.marketQualityService.assess({
+      marketCapUsd: query.marketCapUsd ?? null,
+      marketVolume24hUsd: query.marketVolume24hUsd ?? null,
+      minimumMarketCapUsd: query.minimumMarketCapUsd,
+      minimumVolume24hUsd: query.minimumVolume24hUsd
     });
     const scoreResult = this.trendScoringService.score({
       price,
@@ -372,25 +381,22 @@ export class IndicatorsService {
       isSideways: scoreResult.isSideways,
       sidewaysScore: scoreResult.sidewaysScore,
       higherTimeframeConfirmation: multiTimeframeResult.higherTimeframeConfirmation,
-      higherTimeframeTrendScore,
-      marketStructure: marketStructureResult.marketStructure,
-      structureQualityScore: marketStructureResult.structureQualityScore,
-      bosStatus: marketStructureResult.bosStatus,
-      candlesSinceBos: marketStructureResult.candlesSinceBos,
-      retestStatus: marketStructureResult.retestStatus,
-      chochStatus: marketStructureResult.chochStatus,
-      chochDetected: marketStructureResult.chochDetected,
-      compressionState: marketStructureResult.compressionState,
-      falseBreakdown: marketStructureResult.falseBreakdown,
-      supportStrength: supportResistanceResult.supportStrength,
       supportDistancePercent: supportResistanceResult.supportDistancePercent,
-      resistanceStrength: supportResistanceResult.resistanceStrength,
-      liquidityDirection: liquidityResult.liquidityDirection,
-      nearestLiquidityZone: liquidityResult.nearestLiquidityZone,
-      liquidityDistancePercent: liquidityResult.liquidityDistancePercent,
-      liquidityPressure: liquidityResult.liquidityPressure,
-      trendExhaustion: trendExhaustionResult.trendExhaustion
+      marketQuality: marketQualityResult.marketQuality,
+      marketQualityScore: marketQualityResult.marketQualityScore
     });
+
+    if (DEBUG_CALIBRATION_MODE) {
+      console.info('[calibration]', {
+        symbol: query.symbol,
+        trendScore: roundTo(trendScoreResult.trendScore, 2),
+        entryScore: roundTo(entryScoreResult.entryScore, 2),
+        decisionScore: roundTo(tradeDecisionResult.tradeDecisionScore, 2),
+        finalDecision: tradeDecisionResult.tradeDecisionVerdict,
+        contributions: tradeDecisionResult.tradeDecisionAdjustments,
+        hardBlockers: tradeDecisionResult.tradeDecisionBlockers
+      });
+    }
     const tradeManagementResult = this.tradeManagementService.evaluate({
       eligible: eligibility.eligible,
       price,
@@ -452,7 +458,13 @@ export class IndicatorsService {
       tradeVerdict,
       tradeDecisionScore: roundTo(tradeDecisionResult.tradeDecisionScore, 2),
       tradeDecisionVerdict: tradeDecisionResult.tradeDecisionVerdict,
+      tradeDecisionBlockers: tradeDecisionResult.tradeDecisionBlockers,
       riskRewardBand: tradeDecisionResult.riskRewardBand,
+      marketQuality: marketQualityResult.marketQuality,
+      marketQualityScore: marketQualityResult.marketQualityScore,
+      marketQualityReasons: marketQualityResult.marketQualityReasons,
+      marketCapUsd: query.marketCapUsd ?? null,
+      marketVolume24hUsd: query.marketVolume24hUsd ?? null,
       pullbackQuality: tradeDecisionResult.pullbackQuality,
       extensionState: tradeDecisionResult.extensionState,
       tradeDecisionAdjustments: tradeDecisionResult.tradeDecisionAdjustments,

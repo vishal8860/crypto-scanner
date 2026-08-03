@@ -1,45 +1,20 @@
 import {
-  DECISION_ADJ_BOS_STALE,
-  DECISION_ADJ_CHOCH_AGAINST,
-  DECISION_ADJ_CLEAN_BOS,
-  DECISION_ADJ_COMPRESSION,
-  DECISION_ADJ_CONFIRMED_RETEST,
-  DECISION_ADJ_EXHAUSTION,
-  DECISION_ADJ_FAKE_BREAKDOWN,
-  DECISION_ADJ_PARABOLIC,
-  DECISION_ADJ_STRONG_STRUCTURE,
-  DECISION_ADJ_STRONG_SUPPORT_NEARBY,
-  DECISION_ADJ_SUPPORT_REJECTION,
-  DECISION_DIRECTIONAL_MOVEMENT_MIN,
-  DECISION_ENTRY_POOR_EMA20_DISTANCE_MIN,
-  DECISION_ENTRY_READY_EMA20_DISTANCE_MAX,
-  DECISION_ENTRY_WATCH_EMA20_DISTANCE_MAX,
+  DECISION_EXTREME_EXTENSION_PERCENT,
   DECISION_HARD_BLOCK_RISK_REWARD_MIN,
-  DECISION_MAX_ABS_EMA200_DISTANCE_PERCENT,
-  DECISION_MAX_ABS_EMA20_EXTENSION_PERCENT,
-  DECISION_OLD_TREND_CANDLES_MIN,
-  DECISION_TREND_MAX_SIDEWAYS_SCORE,
-  DECISION_TREND_MIN_STRENGTH,
-  ENTRY_SCORE_READY_MIN,
-  SUPPORT_DISTANCE_STRONG_WARNING_PERCENT,
-  ENTRY_SCORE_WATCH_MIN,
-  TREND_SCORE_EXCELLENT_MIN,
-  TREND_SCORE_GOOD_MIN,
-  STRUCTURE_RECENT_BOS_CANDLES,
+  DECISION_MAJOR_SUPPORT_DISTANCE_PERCENT,
+  DECISION_NEAR_SUPPORT_DISTANCE_PERCENT,
+  DECISION_NEAR_SUPPORT_PENALTY,
+  DECISION_SLIGHT_EXTENSION_PENALTY,
+  TRADE_DECISION_A_PLUS_MIN,
+  TRADE_DECISION_STRONG_MIN,
+  TRADE_DECISION_WATCH_MIN,
+  TRADE_DECISION_WEAK_MIN,
   TRADE_DECISION_WEIGHTS
 } from '../constants/indicator.constants.js';
 import {
   ExtensionState,
   HigherTimeframeConfirmation,
-  BosDirection,
-  ChochDirection,
-  CompressionState,
-  LiquidityDirection,
-  LiquidityZoneType,
-  RetestStatus,
-  StructureTrend,
-  SupportResistanceStrength,
-  TrendExhaustionState,
+  MarketQuality,
   PullbackQuality,
   RiskRewardBand,
   TradeDecisionAdjustment,
@@ -66,29 +41,15 @@ export interface TradeDecisionInput {
   readonly isSideways: boolean;
   readonly sidewaysScore: number;
   readonly higherTimeframeConfirmation: HigherTimeframeConfirmation;
-  readonly higherTimeframeTrendScore: number | null;
-  readonly marketStructure: StructureTrend;
-  readonly structureQualityScore: number;
-  readonly bosStatus: BosDirection;
-  readonly candlesSinceBos: number | null;
-  readonly retestStatus: RetestStatus;
-  readonly chochStatus: ChochDirection;
-  readonly chochDetected: boolean;
-  readonly compressionState: CompressionState;
-  readonly falseBreakdown: boolean;
-  readonly supportStrength: SupportResistanceStrength;
+  readonly marketQuality: MarketQuality;
+  readonly marketQualityScore: number;
   readonly supportDistancePercent: number | null;
-  readonly resistanceStrength: SupportResistanceStrength;
-  readonly liquidityDirection: LiquidityDirection;
-  readonly nearestLiquidityZone: LiquidityZoneType;
-  readonly liquidityDistancePercent: number | null;
-  readonly liquidityPressure: boolean;
-  readonly trendExhaustion: TrendExhaustionState;
 }
 
 export interface TradeDecisionResult {
   readonly tradeDecisionScore: number;
   readonly tradeDecisionVerdict: TradeDecisionVerdict;
+  readonly tradeDecisionBlockers: readonly string[];
   readonly riskRewardBand: RiskRewardBand;
   readonly pullbackQuality: PullbackQuality;
   readonly extensionState: ExtensionState;
@@ -103,75 +64,50 @@ const roundTo = (value: number, precision: number): number => {
   return Math.round(value * factor) / factor;
 };
 
-type EntryQualification = 'READY' | 'WATCH' | 'DEVELOPING' | 'POOR';
-type TrendQualification = 'Excellent' | 'Good' | 'Average' | 'Rejected';
-
 export class TradeDecisionService {
   public assess(input: TradeDecisionInput): TradeDecisionResult {
     const riskRewardBand = this.resolveRiskRewardBand(input.riskReward);
     const pullbackQuality = this.resolvePullbackQuality(input.tradeStage, input.distanceFromEMA20Percent);
     const extensionState = this.resolveExtensionState(input.distanceFromEMA20Percent, input.distanceFromEMA200Percent);
+    const blockers = this.resolveHardBlockers(input, extensionState);
 
-    const trendGateFailures = this.resolveTrendGateFailures(input);
-    const entryQualification = this.resolveEntryQualification(input, pullbackQuality, extensionState, riskRewardBand);
-    const hardBlockers = this.resolveHardBlockers(input, extensionState, riskRewardBand);
+    const componentScores = {
+      trendScore: input.trendScore,
+      entryScore: input.entryScore,
+      multiTimeframeScore: this.multiTimeframeScore(input.higherTimeframeConfirmation),
+      marketQualityScore: input.marketQualityScore,
+      riskRewardScore: this.riskRewardBandScore(riskRewardBand)
+    } as const;
 
-    const trendQualification: TrendQualification = trendGateFailures.length > 0
-      ? 'Rejected'
-      : this.resolveTrendQualification(input.trendScore);
+    const baseDecisionScore =
+      componentScores.trendScore * TRADE_DECISION_WEIGHTS.trendScore +
+      componentScores.entryScore * TRADE_DECISION_WEIGHTS.entryScore +
+      componentScores.multiTimeframeScore * TRADE_DECISION_WEIGHTS.multiTimeframe +
+      componentScores.marketQualityScore * TRADE_DECISION_WEIGHTS.marketQuality +
+      componentScores.riskRewardScore * TRADE_DECISION_WEIGHTS.riskReward;
+    const softPenalties = this.resolveSoftPenalties(input, extensionState);
+    const softPenaltyTotal = softPenalties.reduce((total, item) => total + item.points, 0);
+    const tradeDecisionScore = roundTo(clamp(baseDecisionScore + softPenaltyTotal, 0, 100), 2);
 
-    const blockerReasons = [...trendGateFailures, ...hardBlockers];
-
-    const adjustments: TradeDecisionAdjustment[] = blockerReasons.map((reason) => ({
-      label: 'Blocked because',
-      points: -12,
-      reason
-    }));
-
-    const boosters = this.resolveBoosters(input, pullbackQuality);
-    for (const booster of boosters) {
-      adjustments.push(booster);
-    }
-
-    const multiTimeframeAdjustment = this.resolveMultiTimeframeAdjustment(
-      input.higherTimeframeConfirmation,
-      input.trendScore,
-      input.higherTimeframeTrendScore
+    const tradeDecisionVerdict = blockers.length > 0 ? 'AVOID' : this.resolveVerdictByScore(tradeDecisionScore);
+    const tradeDecisionAdjustments = this.resolveDecisionExplanation(
+      input,
+      componentScores,
+      riskRewardBand,
+      blockers,
+      softPenalties,
+      tradeDecisionScore
     );
-
-    if (multiTimeframeAdjustment !== null) {
-      adjustments.push(multiTimeframeAdjustment);
-    }
-
-    const baseScore =
-      input.trendScore * TRADE_DECISION_WEIGHTS.trendScore +
-      input.entryScore * TRADE_DECISION_WEIGHTS.entryScore +
-      this.riskRewardBandScore(riskRewardBand) * TRADE_DECISION_WEIGHTS.riskReward +
-      this.volumeQualityScore(input.volumeQuality) * TRADE_DECISION_WEIGHTS.volumeQuality +
-      this.tradeStageScore(input.tradeStage) * TRADE_DECISION_WEIGHTS.tradeStage;
-
-    const boosterImpact = adjustments
-      .filter((item) => item.points > 0)
-      .reduce((total, current) => total + current.points, 0);
-    const softPenalty = adjustments
-      .filter((item) => item.points < 0 && item.label !== 'Blocked because')
-      .reduce((total, current) => total + current.points, 0);
-    const blockerPenalty = blockerReasons.length > 0 ? 30 : 0;
-    const adjustedScore = baseScore + boosterImpact + softPenalty - blockerPenalty;
-    const tradeDecisionScore = roundTo(clamp(adjustedScore, 0, 100), 2);
-
-    const tradeDecisionVerdict = blockerReasons.length > 0
-      ? 'AVOID'
-      : this.resolveMatrixVerdict(trendQualification, entryQualification);
 
     return {
       tradeDecisionScore,
       tradeDecisionVerdict,
+      tradeDecisionBlockers: blockers,
       riskRewardBand,
       pullbackQuality,
       extensionState,
-      tradeDecisionAdjustments: adjustments,
-      finalRecommendation: this.resolveRecommendation(tradeDecisionVerdict, blockerReasons, entryQualification)
+      tradeDecisionAdjustments,
+      finalRecommendation: this.resolveRecommendation(tradeDecisionVerdict, blockers)
     };
   }
 
@@ -209,278 +145,134 @@ export class TradeDecisionService {
     return 'Extended Move';
   }
 
-  private resolveTrendGateFailures(input: TradeDecisionInput): readonly string[] {
-    const failures: string[] = [];
-
-    if (!input.isBelowEMA200) {
-      failures.push('Price is above EMA200.');
-    }
-
-    if (!input.isBearishAlignment) {
-      failures.push('EMA20 is not below EMA200 with bearish alignment.');
-    }
-
-    if (input.ema20SlopePercent > 0) {
-      failures.push('EMA20 slope is positive.');
-    }
-
-    if (input.trendStrengthScore < DECISION_TREND_MIN_STRENGTH) {
-      failures.push('Trend strength is below minimum threshold.');
-    }
-
-    if (input.isSideways || input.sidewaysScore >= DECISION_TREND_MAX_SIDEWAYS_SCORE || input.tradeStage === 'SIDEWAYS') {
-      failures.push('Market is classified as sideways.');
-    }
-
-    return failures;
-  }
-
-  private resolveEntryQualification(
-    input: TradeDecisionInput,
-    pullbackQuality: PullbackQuality,
-    extensionState: ExtensionState,
-    riskRewardBand: RiskRewardBand
-  ): EntryQualification {
-    const absEma20Distance = Math.abs(input.distanceFromEMA20Percent);
-    const absEma200Distance = Math.abs(input.distanceFromEMA200Percent);
-
-    if (
-      input.entryScore >= ENTRY_SCORE_READY_MIN &&
-      pullbackQuality === 'Perfect Pullback' &&
-      extensionState === 'Not Extended' &&
-      absEma20Distance <= DECISION_ENTRY_READY_EMA20_DISTANCE_MAX &&
-      absEma200Distance <= DECISION_MAX_ABS_EMA200_DISTANCE_PERCENT &&
-      (riskRewardBand === 'Excellent' || riskRewardBand === 'Good')
-    ) {
-      return 'READY';
-    }
-
-    if (
-      input.entryScore >= ENTRY_SCORE_WATCH_MIN &&
-      absEma20Distance <= DECISION_ENTRY_WATCH_EMA20_DISTANCE_MAX &&
-      (riskRewardBand === 'Excellent' || riskRewardBand === 'Good' || riskRewardBand === 'Average')
-    ) {
-      return 'WATCH';
-    }
-
-    if (
-      input.entryScore >= 50 &&
-      extensionState !== 'Extended' &&
-      absEma20Distance < DECISION_ENTRY_POOR_EMA20_DISTANCE_MIN
-    ) {
-      return 'DEVELOPING';
-    }
-
-    return 'POOR';
-  }
-
-  private resolveHardBlockers(
-    input: TradeDecisionInput,
-    extensionState: ExtensionState,
-    riskRewardBand: RiskRewardBand
-  ): readonly string[] {
+  private resolveHardBlockers(input: TradeDecisionInput, extensionState: ExtensionState): readonly string[] {
     const blockers: string[] = [];
 
     if (input.riskReward === null || input.riskReward < DECISION_HARD_BLOCK_RISK_REWARD_MIN) {
-      blockers.push('Risk/reward is below configured minimum.');
+      blockers.push('Risk Reward below minimum threshold.');
     }
 
-    if (Math.abs(input.distanceFromEMA20Percent) > DECISION_MAX_ABS_EMA20_EXTENSION_PERCENT || extensionState === 'Extended') {
-      blockers.push('Price is already extended beyond configured threshold.');
+    if (input.marketQuality === 'Avoid') {
+      blockers.push('Market Quality below threshold.');
     }
 
-    if (input.volumeQuality === 'Poor') {
-      blockers.push('Volume is extremely poor.');
+    if (input.higherTimeframeConfirmation === 'Counter Trend') {
+      blockers.push('MTF conflict: higher timeframe is bullish against the setup.');
     }
 
-    if (input.trendAge === 'Old' || input.candlesSinceEMA200Cross >= DECISION_OLD_TREND_CANDLES_MIN) {
-      blockers.push('Trend is too old.');
+    if (
+      input.supportDistancePercent !== null &&
+      Math.abs(input.supportDistancePercent) <= DECISION_MAJOR_SUPPORT_DISTANCE_PERCENT
+    ) {
+      blockers.push('Price is sitting directly on major support with no room to downside.');
     }
 
-    if (Math.abs(input.distanceFromEMA200Percent) > DECISION_MAX_ABS_EMA200_DISTANCE_PERCENT) {
-      blockers.push('Distance from EMA200 exceeds maximum threshold.');
-    }
-
-    if (riskRewardBand === 'Unknown') {
-      blockers.push('Risk/reward is unavailable for decision quality.');
-    }
-
-    if (input.falseBreakdown) {
-      blockers.push('Price quickly reclaimed broken structure.');
+    if (
+      Math.abs(input.distanceFromEMA20Percent) >= DECISION_EXTREME_EXTENSION_PERCENT ||
+      extensionState === 'Extended'
+    ) {
+      blockers.push('Price is already extremely extended outside the acceptable zone.');
     }
 
     return blockers;
   }
 
-  private resolveBoosters(
+  private resolveSoftPenalties(
     input: TradeDecisionInput,
-    pullbackQuality: PullbackQuality
+    extensionState: ExtensionState
   ): readonly TradeDecisionAdjustment[] {
-    const boosters: TradeDecisionAdjustment[] = [];
-
-    if (input.freshCross) {
-      boosters.push({ label: 'Positive factor', points: 8, reason: 'Fresh trend is still actionable.' });
-    }
-
-    if (pullbackQuality === 'Perfect Pullback') {
-      boosters.push({ label: 'Positive factor', points: 12, reason: 'Perfect pullback quality near EMA20.' });
-    }
-
-    if (input.volumeQuality === 'Excellent') {
-      boosters.push({ label: 'Positive factor', points: 8, reason: 'Excellent volume confirms participation.' });
-    }
-
-    if (input.trendStrengthScore >= 8) {
-      boosters.push({ label: 'Positive factor', points: 8, reason: 'High trend strength supports continuation.' });
-    }
-
-    if (input.trendStrengthScore >= DECISION_DIRECTIONAL_MOVEMENT_MIN) {
-      boosters.push({ label: 'Positive factor', points: 5, reason: 'Directional movement remains healthy.' });
-    }
-
-    if (Math.abs(input.distanceFromEMA20Percent) <= DECISION_ENTRY_READY_EMA20_DISTANCE_MAX) {
-      boosters.push({ label: 'Positive factor', points: 6, reason: 'Price is near EMA20 for controlled entry.' });
-    }
-
-    if (input.isBearishAlignment && Math.abs(input.distanceFromEMA200Percent) <= DECISION_MAX_ABS_EMA200_DISTANCE_PERCENT) {
-      boosters.push({ label: 'Positive factor', points: 5, reason: 'EMA spacing is healthy and bearish.' });
-    }
-
-    if (input.bosStatus === 'Bearish BOS') {
-      boosters.push({
-        label: 'Price Action Adjustment',
-        points: input.candlesSinceBos !== null && input.candlesSinceBos <= STRUCTURE_RECENT_BOS_CANDLES
-          ? DECISION_ADJ_CLEAN_BOS
-          : DECISION_ADJ_BOS_STALE,
-        reason: 'Clean bearish break of structure is in place.'
-      });
-    }
-
-    if (input.retestStatus === 'Broke then Retested') {
-      boosters.push({
-        label: 'Price Action Adjustment',
-        points: DECISION_ADJ_CONFIRMED_RETEST,
-        reason: 'Break of structure was successfully retested.'
-      });
-    }
-
-    if (input.structureQualityScore >= 7) {
-      boosters.push({
-        label: 'Price Action Adjustment',
-        points: DECISION_ADJ_STRONG_STRUCTURE,
-        reason: 'Strong and consistent swing structure is present.'
-      });
-    }
+    const penalties: TradeDecisionAdjustment[] = [];
 
     if (
-      input.retestStatus === 'Broke then Retested' &&
-      input.supportStrength !== 'Strong' &&
-      input.resistanceStrength === 'Strong'
-    ) {
-      boosters.push({
-        label: 'Price Action Adjustment',
-        points: DECISION_ADJ_SUPPORT_REJECTION,
-        reason: 'Retest rejected from strong overhead structure.'
-      });
-    }
-
-    if (input.compressionState !== 'None') {
-      boosters.push({
-        label: 'Price Action Adjustment',
-        points: DECISION_ADJ_COMPRESSION,
-        reason: `Compression detected: ${input.compressionState}.`
-      });
-    }
-
-    if (input.falseBreakdown) {
-      boosters.push({
-        label: 'Price Action Adjustment',
-        points: DECISION_ADJ_FAKE_BREAKDOWN,
-        reason: 'Fake breakdown detected with reclaim above broken level.'
-      });
-    }
-
-    if (input.chochDetected || input.chochStatus === 'Bullish CHoCH') {
-      boosters.push({
-        label: 'Price Action Adjustment',
-        points: DECISION_ADJ_CHOCH_AGAINST,
-        reason: 'CHoCH detected against the active setup direction.'
-      });
-    }
-
-    if (
-      input.supportStrength === 'Strong' &&
       input.supportDistancePercent !== null &&
-      Math.abs(input.supportDistancePercent) <= SUPPORT_DISTANCE_STRONG_WARNING_PERCENT
+      Math.abs(input.supportDistancePercent) > DECISION_MAJOR_SUPPORT_DISTANCE_PERCENT &&
+      Math.abs(input.supportDistancePercent) <= DECISION_NEAR_SUPPORT_DISTANCE_PERCENT
     ) {
-      boosters.push({
-        label: 'Price Action Adjustment',
-        points: DECISION_ADJ_STRONG_SUPPORT_NEARBY,
-        reason: 'Major support sits directly below current price.'
+      penalties.push({
+        label: 'Support Penalty',
+        points: DECISION_NEAR_SUPPORT_PENALTY,
+        reason: 'Price is close to nearby support, reducing immediate downside room.'
       });
     }
 
-    if (input.trendExhaustion === 'Exhausted') {
-      boosters.push({
-        label: 'Price Action Adjustment',
-        points: DECISION_ADJ_EXHAUSTION,
-        reason: 'Trend is becoming exhausted and may pause.'
+    if (extensionState === 'Slightly Extended') {
+      penalties.push({
+        label: 'Extension Penalty',
+        points: DECISION_SLIGHT_EXTENSION_PENALTY,
+        reason: 'Price is somewhat extended and may need consolidation first.'
       });
     }
 
-    if (input.trendExhaustion === 'Parabolic') {
-      boosters.push({
-        label: 'Price Action Adjustment',
-        points: DECISION_ADJ_PARABOLIC,
-        reason: 'Move is parabolic and vulnerable to sharp reversals.'
-      });
-    }
-
-    if (input.liquidityPressure && input.liquidityDirection === 'Below') {
-      boosters.push({
-        label: 'Price Action Adjustment',
-        points: -6,
-        reason: `Price is moving directly into nearby ${input.nearestLiquidityZone.toLowerCase()}.`
-      });
-    }
-
-    if (input.structureQualityScore <= 4) {
-      boosters.push({ label: 'Price Action Adjustment', points: -5, reason: 'Structure quality is weak and noisy.' });
-    }
-
-    return boosters;
+    return penalties;
   }
 
-  private resolveMultiTimeframeAdjustment(
-    confirmation: HigherTimeframeConfirmation,
-    primaryTrendScore: number,
-    higherTrendScore: number | null
-  ): TradeDecisionAdjustment | null {
-    if (confirmation === 'Confirmed') {
-      if (higherTrendScore !== null && primaryTrendScore >= TREND_SCORE_EXCELLENT_MIN && higherTrendScore >= TREND_SCORE_EXCELLENT_MIN) {
-        return {
-          label: 'Multi-Timeframe Bonus',
-          points: 15,
-          reason: '1 Hour confirms bearish trend and both timeframes are excellent.'
-        };
+  private resolveDecisionExplanation(
+    input: TradeDecisionInput,
+    componentScores: {
+      readonly trendScore: number;
+      readonly entryScore: number;
+      readonly multiTimeframeScore: number;
+      readonly marketQualityScore: number;
+      readonly riskRewardScore: number;
+    },
+    riskRewardBand: RiskRewardBand,
+    blockers: readonly string[],
+    softPenalties: readonly TradeDecisionAdjustment[],
+    tradeDecisionScore: number
+  ): readonly TradeDecisionAdjustment[] {
+    const items: TradeDecisionAdjustment[] = [
+      {
+        label: 'Trend Score',
+        points: roundTo(componentScores.trendScore * TRADE_DECISION_WEIGHTS.trendScore, 2),
+        reason: `Trend score ${roundTo(componentScores.trendScore, 2)} contributes 40% of the final decision.`
+      },
+      {
+        label: 'Entry',
+        points: roundTo(componentScores.entryScore * TRADE_DECISION_WEIGHTS.entryScore, 2),
+        reason: `Entry score ${roundTo(componentScores.entryScore, 2)} contributes 30% of the final decision.`
+      },
+      {
+        label: 'MTF',
+        points: roundTo(componentScores.multiTimeframeScore * TRADE_DECISION_WEIGHTS.multiTimeframe, 2),
+        reason: this.resolveMultiTimeframeReason(input.higherTimeframeConfirmation)
+      },
+      {
+        label: 'Market Quality',
+        points: roundTo(componentScores.marketQualityScore * TRADE_DECISION_WEIGHTS.marketQuality, 2),
+        reason: `Market quality is ${input.marketQuality}.`
+      },
+      {
+        label: 'Risk Reward',
+        points: roundTo(componentScores.riskRewardScore * TRADE_DECISION_WEIGHTS.riskReward, 2),
+        reason: `Risk/reward is classified as ${riskRewardBand}.`
       }
+    ];
 
-      return {
-        label: 'Multi-Timeframe Bonus',
-        points: 10,
-        reason: '1 Hour confirms bearish trend.'
-      };
+    items.push(...softPenalties);
+
+    for (const blocker of blockers) {
+      items.push({ label: 'Blocked because', points: 0, reason: blocker });
+    }
+
+    items.push({
+      label: 'TOTAL',
+      points: tradeDecisionScore,
+      reason: 'Final calibrated decision score after weighted contributions and soft penalties.'
+    });
+
+    return items;
+  }
+
+  private resolveMultiTimeframeReason(confirmation: HigherTimeframeConfirmation): string {
+    if (confirmation === 'Confirmed') {
+      return '1H confirms the bearish setup.';
     }
 
     if (confirmation === 'Counter Trend') {
-      return {
-        label: 'Multi-Timeframe Bonus',
-        points: -15,
-        reason: 'Higher timeframe remains bullish.'
-      };
+      return '1H is bullish against the setup.';
     }
 
-    return null;
+    return '1H is neutral and does not strongly confirm the setup.';
   }
 
   private resolveExtensionState(distanceFromEMA20Percent: number, distanceFromEMA200Percent: number): ExtensionState {
@@ -496,18 +288,6 @@ export class TradeDecisionService {
     }
 
     return 'Not Extended';
-  }
-
-  private resolveTrendQualification(trendScore: number): TrendQualification {
-    if (trendScore >= TREND_SCORE_EXCELLENT_MIN) {
-      return 'Excellent';
-    }
-
-    if (trendScore >= TREND_SCORE_GOOD_MIN) {
-      return 'Good';
-    }
-
-    return 'Average';
   }
 
   private riskRewardBandScore(band: RiskRewardBand): number {
@@ -530,100 +310,59 @@ export class TradeDecisionService {
     return 40;
   }
 
-  private volumeQualityScore(volumeQuality: VolumeQuality): number {
-    if (volumeQuality === 'Excellent') {
+  private multiTimeframeScore(confirmation: HigherTimeframeConfirmation): number {
+    if (confirmation === 'Confirmed') {
       return 100;
     }
 
-    if (volumeQuality === 'Good') {
-      return 80;
+    if (confirmation === 'Counter Trend') {
+      return 25;
     }
 
-    if (volumeQuality === 'Average') {
-      return 55;
-    }
-
-    return 30;
+    return 60;
   }
 
-  private tradeStageScore(tradeStage: TradeStage): number {
-    if (tradeStage === 'PULLBACK_ENTRY') {
-      return 100;
-    }
-
-    if (tradeStage === 'EARLY_BREAKDOWN') {
-      return 90;
-    }
-
-    if (tradeStage === 'TREND_CONTINUATION') {
-      return 72;
-    }
-
-    if (tradeStage === 'LATE_TREND') {
-      return 45;
-    }
-
-    return 20;
-  }
-
-  private resolveMatrixVerdict(
-    trendQualification: TrendQualification,
-    entryQualification: EntryQualification
-  ): TradeDecisionVerdict {
-    if (trendQualification === 'Excellent' && entryQualification === 'READY') {
+  private resolveVerdictByScore(score: number): TradeDecisionVerdict {
+    if (score >= TRADE_DECISION_A_PLUS_MIN) {
       return 'A_PLUS_SETUP';
     }
 
-    if (
-      (trendQualification === 'Excellent' && entryQualification === 'WATCH') ||
-      (trendQualification === 'Good' && entryQualification === 'READY')
-    ) {
+    if (score >= TRADE_DECISION_STRONG_MIN) {
       return 'STRONG_SETUP';
     }
 
-    if (
-      (trendQualification === 'Good' && entryQualification === 'WATCH') ||
-      (trendQualification === 'Average' && entryQualification === 'READY')
-    ) {
+    if (score >= TRADE_DECISION_WATCH_MIN) {
       return 'WATCH';
     }
 
-    if (trendQualification === 'Average' && entryQualification === 'DEVELOPING') {
+    if (score >= TRADE_DECISION_WEAK_MIN) {
       return 'WEAK';
     }
 
     return 'AVOID';
   }
 
-  private resolveRecommendation(
-    verdict: TradeDecisionVerdict,
-    blockers: readonly string[],
-    entryQualification: EntryQualification
-  ): string {
+  private resolveRecommendation(verdict: TradeDecisionVerdict, blockers: readonly string[]): string {
     if (blockers.length > 0) {
-      return 'Blocked setup. Wait for conditions to improve.';
+      return `Rejected because: ${blockers.join(' ')}`;
     }
 
     if (verdict === 'A_PLUS_SETUP') {
-      return 'Ready for entry on candle confirmation.';
+      return 'High-conviction setup. Ready for entry on confirmation.';
     }
 
     if (verdict === 'STRONG_SETUP') {
-      return 'Excellent candidate for today\'s watchlist.';
+      return 'Strong bearish candidate for the active watchlist.';
     }
 
     if (verdict === 'WATCH') {
-      if (entryQualification === 'WATCH') {
-        return 'Wait for pullback before entering.';
-      }
-
-      return 'Trend is healthy but reward is insufficient.';
+      return 'Good setup quality, but execution still needs confirmation.';
     }
 
     if (verdict === 'WEAK') {
-      return 'Momentum is fading. Skip.';
+      return 'Setup is below preferred quality but not objectively invalid.';
     }
 
-    return 'Momentum is fading. Skip.';
+    return 'Setup quality is too weak for a bearish trade.';
   }
 }

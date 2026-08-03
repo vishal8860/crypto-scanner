@@ -1948,6 +1948,81 @@ Scanner now behaves closer to discretionary trade selection:
 
 ---
 
+## Day 15 - Decision Engine Recalibration
+
+### Objective
+
+Reduce over-conservatism in the scanner so it ranks bearish opportunities by overall quality instead of collapsing most setups into `Avoid`.
+
+### Core Decision Change
+
+- Reworked decision generation into a score-first model based on a real `Decision Score` out of `100`.
+- Current contribution weights:
+	- Trend Score = 40%
+	- Entry Score = 30%
+	- MTF = 10%
+	- Risk/Reward = 10%
+	- Market Quality = 10%
+- Verdict thresholds recalibrated to:
+	- `95+` = `A+`
+	- `85-94` = `Strong`
+	- `70-84` = `Watch`
+	- `55-69` = `Weak`
+	- `<55` = `Avoid`
+
+### Hard Blocker Cleanup
+
+- Removed aggressive rejection behavior for non-fatal conditions.
+- Immediate `Avoid` is now reserved for objective blockers only:
+	- risk/reward below minimum
+	- higher-timeframe conflict
+	- price directly on major support
+	- market quality = `Avoid`
+	- extreme extension
+- Conditions like near-support pressure or slight extension now apply soft score penalties instead of forcing rejection.
+
+### Entry Calibration
+
+- Relaxed entry-grade interpretation so mid-quality entries are no longer treated as effectively invalid.
+- Updated calibration intent:
+	- `80-100` → premium/powerful pullback
+	- `60-79` → good pullback
+	- `45-59` → developing
+	- `30-44` → weak
+	- `<30` → poor
+
+### Transparency Improvements
+
+- Expanded score explanation so users can see weighted decision contributions more clearly.
+- Rejected setups now expose blocker reasons instead of only showing `Avoid`.
+- Added a calibration/debug mode flag so per-market scans can emit:
+	- symbol
+	- trend score
+	- entry score
+	- decision score
+	- final verdict
+	- individual contributions
+	- hard blockers
+
+### Frontend Impact
+
+- Scanner table now highlights `Decision Score` and `Market Quality` more clearly.
+- Trade Analysis panel better reflects calibrated scoring and rejection reasons.
+- Entry quality labels were updated to better match the new score interpretation.
+
+### Validation
+
+- Backend build: passed
+- Frontend build: passed
+
+### Result
+
+Scanner now behaves more like a discretionary ranking engine:
+
+- good bearish trends can survive into `Watch` / `Strong`
+- only objectively poor setups are hard rejected
+- the final decision is easier to audit and tune over time
+
 ## Version
 
-v0.14.0
+v0.15.0

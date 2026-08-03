@@ -33,6 +33,19 @@ const toInterval = (value: string | undefined): CandleInterval => {
   return candidate as CandleInterval;
 };
 
+const toOptionalNumber = (value: string | undefined, label: string): number | undefined => {
+  if (value === undefined || value.trim() === '') {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    throw new AppError(400, `${label} must be a valid number`);
+  }
+
+  return parsed;
+};
+
 export const createIndicatorsRouter = (): Router => {
   const router = Router();
   const service = new IndicatorsService();
@@ -40,7 +53,11 @@ export const createIndicatorsRouter = (): Router => {
   router.get('/', async (request, response) => {
     const query: IndicatorsQueryDto = {
       symbol: toSymbol(typeof request.query.symbol === 'string' ? request.query.symbol : undefined),
-      interval: toInterval(typeof request.query.interval === 'string' ? request.query.interval : undefined)
+      interval: toInterval(typeof request.query.interval === 'string' ? request.query.interval : undefined),
+      marketCapUsd: toOptionalNumber(typeof request.query.marketCapUsd === 'string' ? request.query.marketCapUsd : undefined, 'marketCapUsd'),
+      marketVolume24hUsd: toOptionalNumber(typeof request.query.marketVolume24hUsd === 'string' ? request.query.marketVolume24hUsd : undefined, 'marketVolume24hUsd'),
+      minimumMarketCapUsd: toOptionalNumber(typeof request.query.minimumMarketCapUsd === 'string' ? request.query.minimumMarketCapUsd : undefined, 'minimumMarketCapUsd'),
+      minimumVolume24hUsd: toOptionalNumber(typeof request.query.minimumVolume24hUsd === 'string' ? request.query.minimumVolume24hUsd : undefined, 'minimumVolume24hUsd')
     };
 
     const payload: IndicatorsResponseDto = await service.getForMarket(query);

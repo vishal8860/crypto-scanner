@@ -549,3 +549,50 @@ interface IndicatorResult {
   - entry score third
 - Outcome:
   - markets in bullish recovery phases are no longer surfaced as high-quality bearish continuation candidates.
+
+## Day 15: Decision Engine Recalibration
+
+- Reworked the decision engine to rank opportunities instead of rejecting almost every setup.
+- Decision production is now score-first and driven by a true `tradeDecisionScore` out of `100`.
+- Current weighted model:
+  - `Trend Score` = 40%
+  - `Entry Score` = 30%
+  - `MTF Confirmation` = 10%
+  - `Risk/Reward` = 10%
+  - `Market Quality` = 10%
+- Decision thresholds were recalibrated to:
+  - `95-100` → `A+`
+  - `85-94` → `Strong`
+  - `70-84` → `Watch`
+  - `55-69` → `Weak`
+  - `<55` → `Avoid`
+- Immediate rejection logic was reduced to true hard blockers only:
+  - risk/reward below configured minimum
+  - higher timeframe conflict (`Counter Trend`)
+  - price sitting directly on major support
+  - market quality classified as `Avoid`
+  - extreme extension beyond acceptable zone
+- Non-fatal issues now reduce score instead of forcing rejection:
+  - nearby support pressure
+  - slight extension
+- Entry calibration was relaxed so mid-range entries are treated more realistically:
+  - `80-100` → strong/premium pullback quality
+  - `60-79` → good pullback
+  - `45-59` → developing
+  - `30-44` → weak but acceptable context
+  - `<30` → poor
+- Scanner UI now surfaces calibrated decision transparency more clearly:
+  - `Decision Score` column in the table
+  - `Market Quality` badge in the table
+  - explicit blocker list when a setup is rejected
+  - clearer score contribution lines in `Professional Trade Assessment`
+- Added `DEBUG_CALIBRATION_MODE` so every scanned market can emit:
+  - symbol
+  - trend score
+  - entry score
+  - decision score
+  - final decision
+  - score contributions
+  - hard blockers
+- Outcome:
+  - strong bearish trends with acceptable entries are now more likely to land in `Watch` or `Strong` instead of defaulting to `Avoid`.

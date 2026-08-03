@@ -7,6 +7,7 @@ import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { CandleInterval } from './candle.interface';
 import {
 	HigherTimeframeConfirmation,
+	MarketQuality,
 	MarketStructure,
 	MultiTimeframeSnapshot,
 	RiskLevel,
@@ -59,11 +60,12 @@ export class ScannerPageComponent implements OnInit {
 		'symbol',
 		'structure',
 		'support',
+		'marketQuality',
 		'trendScore',
 		'entryScore',
+		'decisionScore',
 		'mtf',
 		'verdict',
-		'priority',
 		'tradeStage',
 		'trend',
 		'trendAge',
@@ -186,12 +188,20 @@ export class ScannerPageComponent implements OnInit {
 			return `Excellent (${Math.round(score)})`;
 		}
 
-		if (score >= 75) {
+		if (score >= 80) {
 			return `Good (${Math.round(score)})`;
 		}
 
 		if (score >= 60) {
-			return `Fair (${Math.round(score)})`;
+			return `Good Pullback (${Math.round(score)})`;
+		}
+
+		if (score >= 45) {
+			return `Developing (${Math.round(score)})`;
+		}
+
+		if (score >= 30) {
+			return `Weak (${Math.round(score)})`;
 		}
 
 		return `Poor (${Math.round(score)})`;
@@ -305,6 +315,10 @@ export class ScannerPageComponent implements OnInit {
 	}
 
 	protected blockersBullets(summary: ScannerResult): readonly string[] {
+		if (summary.tradeDecisionBlockers.length > 0) {
+			return summary.tradeDecisionBlockers.slice(0, 5);
+		}
+
 		const blockers: string[] = [];
 
 		if (!summary.bearishAlignment) {
@@ -560,6 +574,26 @@ export class ScannerPageComponent implements OnInit {
 		}
 
 		return { icon: '💚', label: 'Strong Bullish', tone: 'green' };
+	}
+
+	protected marketQualityChip(quality: MarketQuality): ChipConfig {
+		if (quality === 'Excellent') {
+			return { icon: '🟢', label: 'Excellent', tone: 'green' };
+		}
+
+		if (quality === 'Good') {
+			return { icon: '🟢', label: 'Good', tone: 'green' };
+		}
+
+		if (quality === 'Average') {
+			return { icon: '🟡', label: 'Average', tone: 'amber' };
+		}
+
+		if (quality === 'Risky') {
+			return { icon: '🟠', label: 'Risky', tone: 'orange' };
+		}
+
+		return { icon: '🔴', label: 'Avoid', tone: 'red' };
 	}
 
 	protected supportChip(state: ScannerResult['supportColumnState']): ChipConfig {
