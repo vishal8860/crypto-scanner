@@ -613,3 +613,29 @@ interface IndicatorResult {
 - Added a support contribution line to the decision breakdown so the final score is easier to audit.
 - Outcome:
   - the scanner now ranks opportunities more like a discretionary trader and surfaces calibration data immediately after each scan.
+
+## Day 16: Trend Quality Engine (Clean Trend vs Choppy Market)
+
+- Added a new Trend Quality component (`0-20`) without introducing any new indicator source.
+- Trend Quality now rewards clean bearish behavior:
+  - staying on one side of EMA20
+  - consistent lower highs and lower lows
+  - stronger bearish impulse persistence
+  - disciplined (smaller) pullbacks
+  - smoother EMA20 slope behavior
+- Trend Quality now penalizes choppy behavior:
+  - repeated EMA20 crosses
+  - high candle overlap
+  - frequent red/green alternation
+  - wick-heavy noisy candles
+  - fake-breakout/reclaim patterns
+  - sideways drag
+- Trend Quality is normalized into labels:
+  - `Excellent`
+  - `Good`
+  - `Average`
+  - `Poor`
+- Final Trend Score now includes this new quality layer so charts with similar EMA alignment can still rank differently by cleanliness.
+- Scanner Trade Analysis now shows Trend Quality label and score directly in Trend Score Breakdown.
+- Outcome:
+  - clean staircase trends naturally rank above messy trends even when base EMA structure is similar.

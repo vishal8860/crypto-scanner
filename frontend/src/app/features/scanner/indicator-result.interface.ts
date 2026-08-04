@@ -153,6 +153,8 @@ export interface IndicatorResult {
   readonly entryQuality: number;
   readonly planningReason: string;
   readonly trendScore: number;
+  readonly trendQualityScore: number;
+  readonly trendQualityLabel: TrendGrade;
   readonly professionalMarketStructure: MarketStructure;
   readonly professionalMarketStructureReason: readonly string[];
   readonly marketStructureWhySentence: string;

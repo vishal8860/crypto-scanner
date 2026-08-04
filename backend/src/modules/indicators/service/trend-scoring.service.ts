@@ -20,6 +20,15 @@ import {
   SLOPE_STRONG_DOWN_THRESHOLD_PERCENT,
   TREND_STRENGTH_MAX,
   TREND_STRENGTH_MIN,
+  TREND_QUALITY_AVERAGE_MIN,
+  TREND_QUALITY_EXCELLENT_MIN,
+  TREND_QUALITY_GOOD_MIN,
+  TREND_QUALITY_HEAVY_EMA20_CROSS_COUNT,
+  TREND_QUALITY_HEAVY_FAKE_BREAKOUT_COUNT,
+  TREND_QUALITY_LOOKBACK,
+  TREND_QUALITY_MAX_SCORE,
+  TREND_QUALITY_PULLBACK_BODY_RATIO_GOOD,
+  TREND_QUALITY_PULLBACK_BODY_RATIO_POOR,
   VOLUME_AVERAGE_PERIOD,
   VOLUME_SCORE_RATIO_BASE,
   VOLUME_SCORE_RATIO_EXCELLENT,
@@ -33,11 +42,15 @@ import {
 import {
   SlopeCategory,
   Trend,
+  TrendGrade,
   VolumeQuality
 } from '../interfaces/indicator-result.interface.js';
 
 export interface TrendScoringInput {
   readonly price: number;
+  readonly opens: readonly number[];
+  readonly highs: readonly number[];
+  readonly lows: readonly number[];
   readonly closes: readonly number[];
   readonly volumes: readonly number[];
   readonly ema9Series: readonly (number | null)[];
@@ -68,6 +81,8 @@ export interface TrendScoringOutput {
   readonly volumeScore: number;
   readonly momentumScore: number;
   readonly sidewaysPenalty: number;
+  readonly trendQualityScore: number;
+  readonly trendQualityLabel: TrendGrade;
   readonly finalScore: number;
   readonly scannerScore: number;
 }
@@ -188,6 +203,15 @@ export class TrendScoringService {
     });
     const sidewaysScore = this.resolveSidewaysScore(sidewaysPenalty);
     const isSideways = sidewaysPenalty > 0;
+    const trendQualityScore = this.resolveTrendQualityScore({
+      opens: input.opens,
+      highs: input.highs,
+      lows: input.lows,
+      closes: input.closes,
+      ema20Series: input.ema20Series,
+      sidewaysPenalty
+    });
+    const trendQualityLabel = this.resolveTrendQualityLabel(trendQualityScore);
 
     const finalScore = clamp(
       emaDistanceScore + trendAgeScore + alignmentScore + slopeScore + volumeScore + momentumScore - sidewaysPenalty,
@@ -209,9 +233,71 @@ export class TrendScoringService {
       volumeScore,
       momentumScore,
       sidewaysPenalty,
+      trendQualityScore,
+      trendQualityLabel,
       finalScore,
       scannerScore: finalScore
     };
+  }
+
+  private resolveTrendQualityLabel(score: number): TrendGrade {
+    if (score >= TREND_QUALITY_EXCELLENT_MIN) {
+      return 'Excellent';
+    }
+
+    if (score >= TREND_QUALITY_GOOD_MIN) {
+      return 'Good';
+    }
+
+    if (score >= TREND_QUALITY_AVERAGE_MIN) {
+      return 'Average';
+    }
+
+    return 'Poor';
+  }
+
+  private resolveTrendQualityScore(input: {
+    readonly opens: readonly number[];
+    readonly highs: readonly number[];
+    readonly lows: readonly number[];
+    readonly closes: readonly number[];
+    readonly ema20Series: readonly (number | null)[];
+    readonly sidewaysPenalty: number;
+  }): number {
+    const tail = this.sliceTrendQualityWindow(input);
+    if (tail.closes.length < 12) {
+      return 0;
+    }
+
+    const crosses = this.countPriceCrossesEMA20(tail.closes, tail.ema20Series);
+    const persistence = 1 - clamp(crosses / TREND_QUALITY_HEAVY_EMA20_CROSS_COUNT, 0, 1);
+
+    const overlap = this.averageCandleOverlap(tail.highs, tail.lows);
+    const alternation = this.alternatingBodyRatio(tail.opens, tail.closes);
+    const wickNoise = this.averageWickNoise(tail.opens, tail.highs, tail.lows, tail.closes);
+    const swingConsistency = this.swingConsistency(tail.highs, tail.lows);
+    const pullbackDiscipline = this.pullbackDiscipline(tail.opens, tail.closes);
+    const impulsePersistence = this.impulsePersistence(tail.opens, tail.highs, tail.lows, tail.closes);
+    const slopeSmoothness = this.slopeSmoothness(tail.ema20Series);
+    const fakeBreakoutCount = this.countFakeBreakouts(tail.lows, tail.closes);
+    const fakeBreakoutPenalty = clamp(fakeBreakoutCount / TREND_QUALITY_HEAVY_FAKE_BREAKOUT_COUNT, 0, 1);
+    const sidewaysDrag = clamp(input.sidewaysPenalty / SIDEWAYS_PENALTY_HEAVY, 0, 1);
+
+    const qualityFactor =
+      persistence * 0.24 +
+      swingConsistency * 0.2 +
+      impulsePersistence * 0.16 +
+      pullbackDiscipline * 0.14 +
+      slopeSmoothness * 0.12 +
+      (1 - overlap) * 0.06 +
+      (1 - alternation) * 0.04 +
+      (1 - wickNoise) * 0.02 +
+      (1 - fakeBreakoutPenalty) * 0.02;
+
+    const normalized = qualityFactor * TREND_QUALITY_MAX_SCORE;
+    const adjusted = normalized - sidewaysDrag * 2;
+
+    return roundTo(clamp(adjusted, 0, TREND_QUALITY_MAX_SCORE), 2);
   }
 
   private resolveSidewaysScore(sidewaysPenalty: number): number {
@@ -550,6 +636,380 @@ export class TrendScoringService {
 
     const atrPercent = (average(absoluteMoves) / avgClose) * 100;
     return atrPercent <= SIDEWAYS_LOW_ATR_MAX_PERCENT;
+  }
+
+  private sliceTrendQualityWindow(input: {
+    readonly opens: readonly number[];
+    readonly highs: readonly number[];
+    readonly lows: readonly number[];
+    readonly closes: readonly number[];
+    readonly ema20Series: readonly (number | null)[];
+  }): {
+    readonly opens: readonly number[];
+    readonly highs: readonly number[];
+    readonly lows: readonly number[];
+    readonly closes: readonly number[];
+    readonly ema20Series: readonly (number | null)[];
+  } {
+    const startIndex = Math.max(0, input.closes.length - TREND_QUALITY_LOOKBACK);
+
+    return {
+      opens: input.opens.slice(startIndex),
+      highs: input.highs.slice(startIndex),
+      lows: input.lows.slice(startIndex),
+      closes: input.closes.slice(startIndex),
+      ema20Series: input.ema20Series.slice(startIndex)
+    };
+  }
+
+  private countPriceCrossesEMA20(closes: readonly number[], ema20Series: readonly (number | null)[]): number {
+    let crosses = 0;
+    let previousSign = 0;
+
+    for (let index = 0; index < closes.length; index += 1) {
+      const close = closes[index];
+      const ema20 = ema20Series[index];
+
+      if (close === undefined || ema20 === null || ema20 === undefined) {
+        continue;
+      }
+
+      const delta = close - ema20;
+      const sign = delta > 0 ? 1 : delta < 0 ? -1 : 0;
+      if (sign === 0) {
+        continue;
+      }
+
+      if (previousSign !== 0 && previousSign !== sign) {
+        crosses += 1;
+      }
+
+      previousSign = sign;
+    }
+
+    return crosses;
+  }
+
+  private averageCandleOverlap(highs: readonly number[], lows: readonly number[]): number {
+    if (highs.length < 2 || lows.length < 2) {
+      return 1;
+    }
+
+    const overlaps: number[] = [];
+
+    for (let index = 1; index < highs.length; index += 1) {
+      const high = highs[index];
+      const low = lows[index];
+      const previousHigh = highs[index - 1];
+      const previousLow = lows[index - 1];
+
+      if (
+        high === undefined ||
+        low === undefined ||
+        previousHigh === undefined ||
+        previousLow === undefined
+      ) {
+        continue;
+      }
+
+      const overlap = Math.max(0, Math.min(high, previousHigh) - Math.max(low, previousLow));
+      const union = Math.max(high, previousHigh) - Math.min(low, previousLow);
+
+      if (union <= 0) {
+        continue;
+      }
+
+      overlaps.push(clamp(overlap / union, 0, 1));
+    }
+
+    return overlaps.length === 0 ? 1 : average(overlaps);
+  }
+
+  private alternatingBodyRatio(opens: readonly number[], closes: readonly number[]): number {
+    if (opens.length < 2 || closes.length < 2) {
+      return 1;
+    }
+
+    let alternations = 0;
+    let transitions = 0;
+    let previousDirection = 0;
+
+    for (let index = 0; index < closes.length; index += 1) {
+      const open = opens[index];
+      const close = closes[index];
+
+      if (open === undefined || close === undefined) {
+        continue;
+      }
+
+      const body = close - open;
+      const direction = body > 0 ? 1 : body < 0 ? -1 : 0;
+      if (direction === 0) {
+        continue;
+      }
+
+      if (previousDirection !== 0) {
+        transitions += 1;
+        if (direction !== previousDirection) {
+          alternations += 1;
+        }
+      }
+
+      previousDirection = direction;
+    }
+
+    if (transitions === 0) {
+      return 1;
+    }
+
+    return clamp(alternations / transitions, 0, 1);
+  }
+
+  private averageWickNoise(
+    opens: readonly number[],
+    highs: readonly number[],
+    lows: readonly number[],
+    closes: readonly number[]
+  ): number {
+    const wickRatios: number[] = [];
+
+    for (let index = 0; index < closes.length; index += 1) {
+      const open = opens[index];
+      const high = highs[index];
+      const low = lows[index];
+      const close = closes[index];
+
+      if (open === undefined || high === undefined || low === undefined || close === undefined) {
+        continue;
+      }
+
+      const range = high - low;
+      if (range <= 0) {
+        continue;
+      }
+
+      const body = Math.abs(close - open);
+      const wick = Math.max(0, range - body);
+      wickRatios.push(clamp(wick / range, 0, 1));
+    }
+
+    return wickRatios.length === 0 ? 1 : average(wickRatios);
+  }
+
+  private swingConsistency(highs: readonly number[], lows: readonly number[]): number {
+    const swingHighs = this.collectPivotValues(highs, true);
+    const swingLows = this.collectPivotValues(lows, false);
+
+    const highConsistency = this.lowerSequenceRatio(swingHighs);
+    const lowConsistency = this.lowerSequenceRatio(swingLows);
+
+    return roundTo(clamp((highConsistency + lowConsistency) / 2, 0, 1), 4);
+  }
+
+  private collectPivotValues(values: readonly number[], isHigh: boolean): number[] {
+    const pivots: number[] = [];
+
+    for (let index = 2; index < values.length - 2; index += 1) {
+      const value = values[index];
+      if (value === undefined) {
+        continue;
+      }
+
+      const leftOne = values[index - 1];
+      const leftTwo = values[index - 2];
+      const rightOne = values[index + 1];
+      const rightTwo = values[index + 2];
+
+      if (
+        leftOne === undefined ||
+        leftTwo === undefined ||
+        rightOne === undefined ||
+        rightTwo === undefined
+      ) {
+        continue;
+      }
+
+      const isPivot = isHigh
+        ? value >= leftOne && value >= leftTwo && value >= rightOne && value >= rightTwo
+        : value <= leftOne && value <= leftTwo && value <= rightOne && value <= rightTwo;
+
+      if (isPivot) {
+        pivots.push(value);
+      }
+    }
+
+    return pivots;
+  }
+
+  private lowerSequenceRatio(values: readonly number[]): number {
+    if (values.length < 2) {
+      return 0.5;
+    }
+
+    let improving = 0;
+
+    for (let index = 1; index < values.length; index += 1) {
+      const current = values[index];
+      const previous = values[index - 1];
+
+      if (current !== undefined && previous !== undefined && current < previous) {
+        improving += 1;
+      }
+    }
+
+    return clamp(improving / (values.length - 1), 0, 1);
+  }
+
+  private pullbackDiscipline(opens: readonly number[], closes: readonly number[]): number {
+    const bearishBodies: number[] = [];
+    const bullishBodies: number[] = [];
+
+    for (let index = 0; index < closes.length; index += 1) {
+      const open = opens[index];
+      const close = closes[index];
+
+      if (open === undefined || close === undefined) {
+        continue;
+      }
+
+      const body = Math.abs(close - open);
+      if (body === 0) {
+        continue;
+      }
+
+      if (close < open) {
+        bearishBodies.push(body);
+      } else if (close > open) {
+        bullishBodies.push(body);
+      }
+    }
+
+    if (bearishBodies.length === 0 || bullishBodies.length === 0) {
+      return 0.5;
+    }
+
+    const bearishAvg = average(bearishBodies);
+    const bullishAvg = average(bullishBodies);
+
+    if (bearishAvg <= 0) {
+      return 0;
+    }
+
+    const ratio = bullishAvg / bearishAvg;
+
+    if (ratio <= TREND_QUALITY_PULLBACK_BODY_RATIO_GOOD) {
+      return 1;
+    }
+
+    if (ratio >= TREND_QUALITY_PULLBACK_BODY_RATIO_POOR) {
+      return 0;
+    }
+
+    const normalized =
+      (TREND_QUALITY_PULLBACK_BODY_RATIO_POOR - ratio) /
+      (TREND_QUALITY_PULLBACK_BODY_RATIO_POOR - TREND_QUALITY_PULLBACK_BODY_RATIO_GOOD);
+
+    return clamp(normalized, 0, 1);
+  }
+
+  private impulsePersistence(
+    opens: readonly number[],
+    highs: readonly number[],
+    lows: readonly number[],
+    closes: readonly number[]
+  ): number {
+    let impulseCount = 0;
+    let total = 0;
+
+    for (let index = 0; index < closes.length; index += 1) {
+      const open = opens[index];
+      const high = highs[index];
+      const low = lows[index];
+      const close = closes[index];
+
+      if (open === undefined || high === undefined || low === undefined || close === undefined) {
+        continue;
+      }
+
+      const range = high - low;
+      if (range <= 0) {
+        continue;
+      }
+
+      total += 1;
+      const bodyRatio = Math.abs(close - open) / range;
+      const isBearishImpulse = close < open && bodyRatio >= 0.55;
+
+      if (isBearishImpulse) {
+        impulseCount += 1;
+      }
+    }
+
+    if (total === 0) {
+      return 0;
+    }
+
+    return clamp(impulseCount / total, 0, 1);
+  }
+
+  private slopeSmoothness(ema20Series: readonly (number | null)[]): number {
+    const changes: number[] = [];
+
+    for (let index = 1; index < ema20Series.length; index += 1) {
+      const current = ema20Series[index];
+      const previous = ema20Series[index - 1];
+
+      if (current === null || previous === null || current === undefined || previous === undefined || previous === 0) {
+        continue;
+      }
+
+      changes.push(((current - previous) / Math.abs(previous)) * 100);
+    }
+
+    if (changes.length < 3) {
+      return 0.5;
+    }
+
+    const mean = average(changes);
+    const variance = average(changes.map((value) => (value - mean) ** 2));
+    const stdDev = Math.sqrt(variance);
+
+    return clamp(1 - stdDev / 0.25, 0, 1);
+  }
+
+  private countFakeBreakouts(lows: readonly number[], closes: readonly number[]): number {
+    let count = 0;
+
+    for (let index = 5; index < closes.length - 2; index += 1) {
+      const low = lows[index];
+      const close = closes[index];
+      const nextClose = closes[index + 1];
+      const secondNextClose = closes[index + 2];
+
+      if (
+        low === undefined ||
+        close === undefined ||
+        nextClose === undefined ||
+        secondNextClose === undefined
+      ) {
+        continue;
+      }
+
+      const priorLows = lows.slice(index - 5, index).filter((value): value is number => value !== undefined);
+      if (priorLows.length < 5) {
+        continue;
+      }
+
+      const priorLowest = Math.min(...priorLows);
+      const madeBreakdown = low < priorLowest;
+      const reclaim = nextClose > close && secondNextClose > close;
+
+      if (madeBreakdown && reclaim) {
+        count += 1;
+      }
+    }
+
+    return count;
   }
 
 }

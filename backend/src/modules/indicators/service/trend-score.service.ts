@@ -16,6 +16,7 @@ export interface TrendScoreInput {
   readonly freshCross: boolean;
   readonly trendAge: TrendAge;
   readonly momentumScore: number;
+  readonly trendQualityScore: number;
   readonly isBelowEMA200: boolean;
   readonly marketStructureAdjustment: number;
 }
@@ -43,6 +44,7 @@ export class TrendScoreService {
     score += input.freshCross ? 8 : 0;
     score += this.trendAgeContribution(input.trendAge);
     score += clamp(input.momentumScore, 0, 20);
+    score += clamp(input.trendQualityScore, 0, 20);
     score -= this.sidewaysPenalty(input.sidewaysScore);
 
     if (input.isBelowEMA200) {

@@ -213,6 +213,13 @@
           <div class="inspector-grid">
             <section class="inspector-section">
               <h3>Trend Score Breakdown</h3>
+              <p>
+                <vs-scanner-status-chip
+                  [icon]="trendQualityChip(summary.trendQualityScore).icon"
+                  [label]="'Trend Quality: ' + summary.trendQualityLabel + ' (' + summary.trendQualityScore.toFixed(0) + '/20)'"
+                  [tone]="trendQualityChip(summary.trendQualityScore).tone"
+                />
+              </p>
               <dl class="breakdown-list">
                 @for (line of trendLines; track line.label) {
                   <div>

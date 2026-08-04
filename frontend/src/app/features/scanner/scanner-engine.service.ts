@@ -66,6 +66,8 @@ const toScannerResult = (indicator: IndicatorResult): ScannerResult => ({
   entryQuality: indicator.entryQuality,
   planningReason: indicator.planningReason,
   trendScore: indicator.trendScore,
+  trendQualityScore: indicator.trendQualityScore,
+  trendQualityLabel: indicator.trendQualityLabel,
   professionalMarketStructure: indicator.professionalMarketStructure,
   professionalMarketStructureReason: indicator.professionalMarketStructureReason,
   marketStructureWhySentence: indicator.marketStructureWhySentence,

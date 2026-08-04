@@ -234,6 +234,9 @@ export class IndicatorsService {
     });
     const scoreResult = this.trendScoringService.score({
       price,
+      opens,
+      highs,
+      lows,
       closes,
       volumes,
       ema9Series,
@@ -300,6 +303,7 @@ export class IndicatorsService {
       freshCross,
       trendAge,
       momentumScore: scoreResult.momentumScore,
+      trendQualityScore: scoreResult.trendQualityScore,
       isBelowEMA200,
       marketStructureAdjustment: professionalMarketStructure.trendAdjustment
     });
@@ -396,6 +400,10 @@ export class IndicatorsService {
       console.info('[calibration]', {
         symbol: query.symbol,
         trendScore: roundTo(trendScoreResult.trendScore, 2),
+        trendQuality: {
+          score: roundTo(scoreResult.trendQualityScore, 2),
+          label: scoreResult.trendQualityLabel
+        },
         entryScore: roundTo(entryScoreResult.entryScore, 2),
         decisionScore: roundTo(tradeDecisionResult.tradeDecisionScore, 2),
         finalDecision: tradeDecisionResult.tradeDecisionVerdict,
@@ -454,6 +462,8 @@ export class IndicatorsService {
       entryQuality: roundTo(plan.entryQuality, 0),
       planningReason: plan.planningReason,
       trendScore: roundTo(trendScoreResult.trendScore, 2),
+      trendQualityScore: roundTo(scoreResult.trendQualityScore, 2),
+      trendQualityLabel: scoreResult.trendQualityLabel,
       professionalMarketStructure: finalProfessionalMarketStructure.marketStructure,
       professionalMarketStructureReason: finalProfessionalMarketStructure.reason,
       marketStructureWhySentence: finalProfessionalMarketStructure.whySentence,

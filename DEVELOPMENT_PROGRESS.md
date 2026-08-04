@@ -2054,6 +2054,57 @@ Reduce the remaining conservatism in the scanner, lower the market-quality floor
 
 Scanner calibration now exposes enough health data to compare outcomes against chart judgment immediately after each scan.
 
+---
+
+## Day 16 - Trend Quality Engine (Detect Clean Trends vs Choppy Markets)
+
+### Objective
+
+Teach the scanner to separate visually clean trends from messy/choppy price action without adding any new indicators.
+
+### Core Enhancement
+
+- Added a dedicated Trend Quality score (`0-20`) to the trend model.
+- Trend Quality is now added into the final Trend Score so two setups with similar EMA structure can be ranked differently by actual price behavior.
+
+### What Trend Quality Rewards
+
+- price persistence on one side of EMA20
+- stronger lower-high / lower-low consistency
+- bearish impulse persistence
+- smaller pullbacks relative to impulse candles
+- smoother EMA20 slope behavior
+
+### What Trend Quality Penalizes
+
+- repeated EMA20 crosses
+- high candle overlap
+- alternating candle direction (chop)
+- wick-heavy noisy candles
+- fake-breakout/reclaim behavior
+- sideways drag
+
+### Normalized Labels
+
+- `Excellent`
+- `Good`
+- `Average`
+- `Poor`
+
+### Frontend Impact
+
+- Trade Analysis now shows Trend Quality label and score in the Trend Score Breakdown section.
+- The score explanation now reflects why clean trends rank above messy trends even under similar EMA alignment.
+
+### Validation
+
+- Backend build: passed
+- Frontend build: passed
+
+### Result
+
+The scanner now behaves closer to discretionary chart reading by promoting clean trend structure and downgrading choppy trend lookalikes.
+
 ## Version
 
-v0.15.1
+v0.16.0

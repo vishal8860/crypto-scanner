@@ -216,7 +216,8 @@ export class ScannerPageComponent implements OnInit {
 			{ label: 'Trend Strength', points: this.trendStrengthContribution(summary.trendStrengthScore) },
 			{ label: 'Directional Movement', points: this.roundContribution(summary.momentumScore) },
 			{ label: 'Volume Quality', points: this.trendVolumeContribution(summary.volumeQuality) },
-			{ label: 'Trend Age', points: this.trendAgeContribution(summary.trendAge) }
+			{ label: 'Trend Age', points: this.trendAgeContribution(summary.trendAge) },
+			{ label: 'Trend Quality', points: this.roundContribution(summary.trendQualityScore) }
 		];
 
 		const sidewaysPenalty = this.trendSidewaysPenalty(summary.sidewaysScore);
@@ -230,6 +231,22 @@ export class ScannerPageComponent implements OnInit {
 		}
 
 		return lines;
+	}
+
+	protected trendQualityChip(score: number): ChipConfig {
+		if (score >= 16) {
+			return { icon: '✅', label: 'Excellent', tone: 'green' };
+		}
+
+		if (score >= 12) {
+			return { icon: '🟢', label: 'Good', tone: 'green' };
+		}
+
+		if (score >= 8) {
+			return { icon: '🟠', label: 'Average', tone: 'orange' };
+		}
+
+		return { icon: '🔴', label: 'Poor', tone: 'red' };
 	}
 
 	protected entryScoreBreakdown(summary: ScannerResult): readonly ScoreBreakdownLine[] {
