@@ -33,6 +33,13 @@ export type WarningSeverity = 'low' | 'medium' | 'high';
 export type HigherTimeframeConfirmation = 'Confirmed' | 'Neutral' | 'Counter Trend';
 export type MarketStructureLabel = 'HH' | 'HL' | 'LH' | 'LL';
 export type StructureTrend = 'Bullish Structure' | 'Bearish Structure' | 'Mixed Structure';
+export type StructurePhase =
+  | 'Bullish'
+  | 'Transition Bullish'
+  | 'Range'
+  | 'Transition Bearish'
+  | 'Bearish'
+  | 'Strong Bearish';
 export type BosDirection = 'Bullish BOS' | 'Bearish BOS' | 'No BOS';
 export type ChochDirection = 'Bullish CHoCH' | 'Bearish CHoCH' | 'None';
 export type RetestStatus = 'Broke and Continued' | 'Retesting' | 'Broke then Retested' | 'Broke then Failed' | 'No Retest';
@@ -51,6 +58,15 @@ export type LiquidityZoneType =
 export type LiquidityDirection = 'Above' | 'Below' | 'At Price' | 'None';
 export type TrendExhaustionState = 'Healthy Trend' | 'Extended' | 'Exhausted' | 'Parabolic';
 export type StructureQualityLabel = 'Excellent' | 'Good' | 'Average' | 'Poor';
+export type PullbackQualityLabel = 'Excellent' | 'Good' | 'Average' | 'Poor';
+export type SetupQualityGrade = 'Poor' | 'Average' | 'Good' | 'Strong' | 'Excellent';
+export type EntryReadinessGrade = 'Ignore' | 'Developing' | 'Watch' | 'Ready' | 'Ideal';
+
+export interface ScoreComponentBreakdown {
+  readonly label: string;
+  readonly score: number;
+  readonly max: number;
+}
 
 export interface TradeDecisionAdjustment {
   readonly label: string;
@@ -155,6 +171,15 @@ export interface IndicatorResult {
   readonly trendScore: number;
   readonly trendQualityScore: number;
   readonly trendQualityLabel: TrendGrade;
+  readonly setupQualityScore: number;
+  readonly setupQualityGrade: SetupQualityGrade;
+  readonly setupQualityBreakdown: readonly ScoreComponentBreakdown[];
+  readonly entryReadinessScore: number;
+  readonly entryReadinessGrade: EntryReadinessGrade;
+  readonly entryReadinessBreakdown: readonly ScoreComponentBreakdown[];
+  readonly structureConfirmationScore: number;
+  readonly structurePhase: StructurePhase;
+  readonly structureConfirmationReasons: readonly string[];
   readonly professionalMarketStructure: MarketStructure;
   readonly professionalMarketStructureReason: readonly string[];
   readonly marketStructureWhySentence: string;
@@ -162,6 +187,8 @@ export interface IndicatorResult {
   readonly trendGrade: TrendGrade;
   readonly entryScore: number;
   readonly entryGrade: EntryGrade;
+  readonly pullbackQualityScore: number;
+  readonly pullbackQualityLabel: PullbackQualityLabel;
   readonly tradeVerdict: TradeVerdict;
   readonly tradeDecisionScore: number;
   readonly tradeDecisionVerdict: TradeDecisionVerdict;

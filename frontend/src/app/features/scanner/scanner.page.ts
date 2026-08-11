@@ -22,7 +22,6 @@ import { ScannerEngineService } from './scanner-engine.service';
 import { ScannerResult } from './scanner-result.interface';
 import { ScannerScoreBadgeComponent } from './components/scanner-score-badge.component';
 import { ChipTone, ScannerStatusChipComponent } from './components/scanner-status-chip.component';
-import { ScannerTrendChipComponent } from './components/scanner-trend-chip.component';
 
 type ScoreTier = 'excellent' | 'good' | 'average' | 'ignore';
 type AlignmentState = 'bearish' | 'bullish' | 'mixed';
@@ -47,8 +46,7 @@ interface ChipConfig {
 		MatInputModule,
 		MatButtonModule,
 		ScannerScoreBadgeComponent,
-		ScannerStatusChipComponent,
-		ScannerTrendChipComponent
+		ScannerStatusChipComponent
 	],
 	templateUrl: './scanner.page.html',
 	styleUrl: './scanner.page.scss',
@@ -59,19 +57,11 @@ export class ScannerPageComponent implements OnInit {
 		'rank',
 		'symbol',
 		'structure',
-		'support',
-		'marketQuality',
-		'trendScore',
-		'entryScore',
-		'decisionScore',
-		'mtf',
+		'setupQuality',
+		'entryReadiness',
 		'verdict',
 		'tradeStage',
-		'trend',
-		'trendAge',
-		'freshCross',
-		'distanceEMA200',
-		'belowEMA200'
+		'priority'
 	];
 	protected readonly inspectorInterval: CandleInterval = '15m';
 	protected readonly searchTerm = signal('');
@@ -86,9 +76,9 @@ export class ScannerPageComponent implements OnInit {
 	protected readonly scanError = computed(() => this.scannerEngineService.error());
 	protected readonly scanProgress = computed(() => this.scannerEngineService.progress());
 	protected readonly scoreLegend = [
-		'Trend Grade: Excellent / Good / Average / Poor',
-		'Entry Grade: Ready / Watch / Developing / Poor',
-		'Decision: ⭐⭐⭐⭐⭐ A+ / ⭐⭐⭐⭐ Strong / ⭐⭐⭐ Watch / ⭐⭐ Weak / ❌ Avoid'
+		'Setup Quality: Poor / Average / Good / Strong / Excellent',
+		'Entry Readiness: Ignore / Developing / Watch / Ready / Ideal',
+		'Decision: matrix of Setup Quality + Entry Readiness'
 	] as const;
 
 	public constructor(
@@ -247,6 +237,62 @@ export class ScannerPageComponent implements OnInit {
 		}
 
 		return { icon: '🔴', label: 'Poor', tone: 'red' };
+	}
+
+	protected structurePhaseChip(phase: ScannerResult['structurePhase']): ChipConfig {
+		if (phase === 'Strong Bearish') {
+			return { icon: '🟥', label: 'Strong Bearish', tone: 'red' };
+		}
+
+		if (phase === 'Bearish') {
+			return { icon: '🔴', label: 'Bearish', tone: 'red' };
+		}
+
+		if (phase === 'Transition Bearish') {
+			return { icon: '🟠', label: 'Transition Bearish', tone: 'orange' };
+		}
+
+		if (phase === 'Range') {
+			return { icon: '⚪', label: 'Range', tone: 'neutral' };
+		}
+
+		if (phase === 'Transition Bullish') {
+			return { icon: '🟡', label: 'Transition Bullish', tone: 'amber' };
+		}
+
+		return { icon: '🟢', label: 'Bullish', tone: 'green' };
+	}
+
+	protected setupQualityChip(summary: ScannerResult): ChipConfig {
+		if (summary.setupQualityScore >= 90) {
+			return { icon: '🟢', label: `Excellent (${summary.setupQualityScore.toFixed(0)})`, tone: 'green' };
+		}
+
+		if (summary.setupQualityScore >= 75) {
+			return { icon: '🟨', label: `Strong (${summary.setupQualityScore.toFixed(0)})`, tone: 'amber' };
+		}
+
+		if (summary.setupQualityScore >= 60) {
+			return { icon: '🟡', label: `Good (${summary.setupQualityScore.toFixed(0)})`, tone: 'amber' };
+		}
+
+		return { icon: '🔴', label: `${summary.setupQualityGrade} (${summary.setupQualityScore.toFixed(0)})`, tone: 'red' };
+	}
+
+	protected entryReadinessChip(summary: ScannerResult): ChipConfig {
+		if (summary.entryReadinessGrade === 'Ideal' || summary.entryReadinessGrade === 'Ready') {
+			return { icon: '🟢', label: `${summary.entryReadinessGrade} (${summary.entryReadinessScore.toFixed(0)})`, tone: 'green' };
+		}
+
+		if (summary.entryReadinessGrade === 'Watch') {
+			return { icon: '🟡', label: `Watch (${summary.entryReadinessScore.toFixed(0)})`, tone: 'amber' };
+		}
+
+		if (summary.entryReadinessGrade === 'Developing') {
+			return { icon: '🟠', label: `Developing (${summary.entryReadinessScore.toFixed(0)})`, tone: 'orange' };
+		}
+
+		return { icon: '🔴', label: `Ignore (${summary.entryReadinessScore.toFixed(0)})`, tone: 'red' };
 	}
 
 	protected entryScoreBreakdown(summary: ScannerResult): readonly ScoreBreakdownLine[] {

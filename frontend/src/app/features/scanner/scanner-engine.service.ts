@@ -25,8 +25,27 @@ export interface ScanSummary {
 }
 
 const SCAN_BATCH_SIZE = 8;
-const IGNORE_SCORE_THRESHOLD = 60;
-const TREND_SCORE_SIMILAR_THRESHOLD = 3;
+const IGNORE_SCORE_THRESHOLD = 40;
+
+const decisionRank = (verdict: ScannerResult['tradeDecisionVerdict']): number => {
+  if (verdict === 'A_PLUS_SETUP') {
+    return 5;
+  }
+
+  if (verdict === 'STRONG_SETUP') {
+    return 4;
+  }
+
+  if (verdict === 'WATCH') {
+    return 3;
+  }
+
+  if (verdict === 'WEAK') {
+    return 2;
+  }
+
+  return 1;
+};
 
 const toScannerResult = (indicator: IndicatorResult): ScannerResult => ({
   rank: 0,
@@ -68,6 +87,15 @@ const toScannerResult = (indicator: IndicatorResult): ScannerResult => ({
   trendScore: indicator.trendScore,
   trendQualityScore: indicator.trendQualityScore,
   trendQualityLabel: indicator.trendQualityLabel,
+  setupQualityScore: indicator.setupQualityScore,
+  setupQualityGrade: indicator.setupQualityGrade,
+  setupQualityBreakdown: indicator.setupQualityBreakdown,
+  entryReadinessScore: indicator.entryReadinessScore,
+  entryReadinessGrade: indicator.entryReadinessGrade,
+  entryReadinessBreakdown: indicator.entryReadinessBreakdown,
+  structureConfirmationScore: indicator.structureConfirmationScore,
+  structurePhase: indicator.structurePhase,
+  structureConfirmationReasons: indicator.structureConfirmationReasons,
   professionalMarketStructure: indicator.professionalMarketStructure,
   professionalMarketStructureReason: indicator.professionalMarketStructureReason,
   marketStructureWhySentence: indicator.marketStructureWhySentence,
@@ -75,6 +103,8 @@ const toScannerResult = (indicator: IndicatorResult): ScannerResult => ({
   trendGrade: indicator.trendGrade,
   entryScore: indicator.entryScore,
   entryGrade: indicator.entryGrade,
+  pullbackQualityScore: indicator.pullbackQualityScore,
+  pullbackQualityLabel: indicator.pullbackQualityLabel,
   tradeVerdict: indicator.tradeVerdict,
   tradeDecisionScore: indicator.tradeDecisionScore,
   tradeDecisionVerdict: indicator.tradeDecisionVerdict,
@@ -150,24 +180,21 @@ const toScannerResult = (indicator: IndicatorResult): ScannerResult => ({
 const rankByScore = (results: readonly ScannerResult[]): readonly ScannerResult[] =>
   [...results]
     .sort((left, right) => {
-      const trendDiff = Math.abs(left.trendScore - right.trendScore);
-
-      if (trendDiff <= TREND_SCORE_SIMILAR_THRESHOLD) {
-        const structureDiff = left.marketStructurePriority - right.marketStructurePriority;
-        if (structureDiff !== 0) {
-          return structureDiff;
-        }
-
-        if (right.trendScore !== left.trendScore) {
-          return right.trendScore - left.trendScore;
-        }
-
-        if (right.entryScore !== left.entryScore) {
-          return right.entryScore - left.entryScore;
-        }
+      if (right.setupQualityScore !== left.setupQualityScore) {
+        return right.setupQualityScore - left.setupQualityScore;
       }
 
-      return right.score - left.score;
+      if (right.entryReadinessScore !== left.entryReadinessScore) {
+        return right.entryReadinessScore - left.entryReadinessScore;
+      }
+
+      const rightDecision = decisionRank(right.tradeDecisionVerdict);
+      const leftDecision = decisionRank(left.tradeDecisionVerdict);
+      if (rightDecision !== leftDecision) {
+        return rightDecision - leftDecision;
+      }
+
+      return left.symbol.localeCompare(right.symbol);
     })
     .map((result, index) => ({ ...result, rank: index + 1 }));
 
@@ -182,7 +209,7 @@ const applyOpportunityFilter = (results: readonly ScannerResult[]): {
 } => {
   const eligible = results.filter((result) => result.eligible);
   const visible = eligible.filter(
-    (result) => !(result.trendScore < IGNORE_SCORE_THRESHOLD && result.entryScore < IGNORE_SCORE_THRESHOLD)
+    (result) => !(result.setupQualityScore < IGNORE_SCORE_THRESHOLD && result.entryReadinessScore < IGNORE_SCORE_THRESHOLD)
   );
   const filtered = rankByScore(visible);
   const avoidCount = results.filter((result) => result.tradeDecisionVerdict === 'AVOID').length;

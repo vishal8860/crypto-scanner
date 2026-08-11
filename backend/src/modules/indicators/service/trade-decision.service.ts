@@ -1,4 +1,12 @@
 import {
+  DECISION_MATRIX_A_PLUS_ENTRY_MIN,
+  DECISION_MATRIX_A_PLUS_SETUP_MIN,
+  DECISION_MATRIX_STRONG_ENTRY_MIN,
+  DECISION_MATRIX_STRONG_SETUP_MIN,
+  DECISION_MATRIX_WATCH_ENTRY_MIN,
+  DECISION_MATRIX_WATCH_SETUP_MIN,
+  DECISION_MATRIX_WEAK_ENTRY_MIN,
+  DECISION_MATRIX_WEAK_SETUP_MIN,
   DECISION_EXTREME_EXTENSION_PERCENT,
   DECISION_HARD_BLOCK_ENTRY_SCORE_MIN,
   DECISION_HARD_BLOCK_RISK_REWARD_MIN,
@@ -6,20 +14,29 @@ import {
   DECISION_NEAR_SUPPORT_DISTANCE_PERCENT,
   DECISION_NEAR_SUPPORT_PENALTY,
   DECISION_SLIGHT_EXTENSION_PENALTY,
+  ENTRY_READINESS_DEVELOPING_MIN,
+  ENTRY_READINESS_IDEAL_MIN,
+  ENTRY_READINESS_READY_MIN,
+  ENTRY_READINESS_WATCH_MIN,
+  ENTRY_READINESS_WEIGHTS,
   MARKET_STRUCTURE_ENTRY_SCORE_CAPS,
-  TRADE_DECISION_A_PLUS_MIN,
-  TRADE_DECISION_STRONG_MIN,
-  TRADE_DECISION_WATCH_MIN,
-  TRADE_DECISION_WEAK_MIN,
-  TRADE_DECISION_WEIGHTS
+  SETUP_QUALITY_AVERAGE_MIN,
+  SETUP_QUALITY_EXCELLENT_MIN,
+  SETUP_QUALITY_GOOD_MIN,
+  SETUP_QUALITY_STRONG_MIN,
+  SETUP_QUALITY_WEIGHTS
 } from '../constants/indicator.constants.js';
 import {
+  EntryReadinessGrade,
   ExtensionState,
   HigherTimeframeConfirmation,
   MarketStructure,
   MarketQuality,
   PullbackQuality,
   RiskRewardBand,
+  RetestStatus,
+  ScoreComponentBreakdown,
+  SetupQualityGrade,
   TradeDecisionAdjustment,
   TradeDecisionVerdict,
   TradeStage,
@@ -29,8 +46,12 @@ import {
 export interface TradeDecisionInput {
   readonly trendScore: number;
   readonly entryScore: number;
+  readonly structureConfirmationScore: number;
+  readonly pullbackQualityScore: number;
   readonly riskReward: number | null;
   readonly volumeQuality: VolumeQuality;
+  readonly retestStatus: RetestStatus;
+  readonly bearishRejectionAfterRetest: boolean;
   readonly tradeStage: TradeStage;
   readonly distanceFromEMA20Percent: number;
   readonly distanceFromEMA200Percent: number;
@@ -51,11 +72,18 @@ export interface TradeDecisionInput {
   readonly marketVolume24hUsd: number | null;
   readonly minimumVolume24hUsd: number;
   readonly supportDistancePercent: number | null;
+  readonly supportAlreadyBroken: boolean;
   readonly professionalMarketStructure: MarketStructure;
 }
 
 export interface TradeDecisionResult {
   readonly tradeDecisionScore: number;
+  readonly setupQualityScore: number;
+  readonly setupQualityGrade: SetupQualityGrade;
+  readonly setupQualityBreakdown: readonly ScoreComponentBreakdown[];
+  readonly entryReadinessScore: number;
+  readonly entryReadinessGrade: EntryReadinessGrade;
+  readonly entryReadinessBreakdown: readonly ScoreComponentBreakdown[];
   readonly tradeDecisionVerdict: TradeDecisionVerdict;
   readonly tradeDecisionBlockers: readonly string[];
   readonly riskRewardBand: RiskRewardBand;
@@ -80,36 +108,35 @@ export class TradeDecisionService {
     const blockers = this.resolveHardBlockers(input, extensionState);
     const marketStructureEntryCap = this.resolveMarketStructureEntryCap(input.professionalMarketStructure);
 
-    const componentScores = {
-      trendScore: input.trendScore,
-      entryScore: Math.min(input.entryScore, marketStructureEntryCap),
-      multiTimeframeScore: this.multiTimeframeScore(input.higherTimeframeConfirmation),
-      marketQualityScore: input.marketQualityScore,
-      riskRewardScore: this.riskRewardBandScore(riskRewardBand)
-    } as const;
+    const setupQuality = this.resolveSetupQuality(input);
+    const entryReadiness = this.resolveEntryReadiness({
+      ...input,
+      entryScore: Math.min(input.entryScore, marketStructureEntryCap)
+    });
 
-    const baseDecisionScore =
-      componentScores.trendScore * TRADE_DECISION_WEIGHTS.trendScore +
-      componentScores.entryScore * TRADE_DECISION_WEIGHTS.entryScore +
-      componentScores.multiTimeframeScore * TRADE_DECISION_WEIGHTS.multiTimeframe +
-      componentScores.marketQualityScore * TRADE_DECISION_WEIGHTS.marketQuality +
-      componentScores.riskRewardScore * TRADE_DECISION_WEIGHTS.riskReward;
-    const softPenalties = this.resolveSoftPenalties(input, extensionState);
-    const softPenaltyTotal = softPenalties.reduce((total, item) => total + item.points, 0);
-    const tradeDecisionScore = roundTo(clamp(baseDecisionScore + softPenaltyTotal, 0, 100), 2);
+    const baseDecisionScore = setupQuality.score * 0.55 + entryReadiness.score * 0.45;
+    const tradeDecisionScore = roundTo(clamp(baseDecisionScore, 0, 100), 2);
 
-    const tradeDecisionVerdict = blockers.length > 0 ? 'AVOID' : this.resolveVerdictByScore(tradeDecisionScore);
+    const tradeDecisionVerdict = blockers.length > 0
+      ? 'AVOID'
+      : this.resolveVerdictByMatrix(setupQuality.score, entryReadiness.score);
     const tradeDecisionAdjustments = this.resolveDecisionExplanation(
       input,
-      componentScores,
+      setupQuality,
+      entryReadiness,
       riskRewardBand,
       blockers,
-      softPenalties,
       tradeDecisionScore
     );
 
     return {
       tradeDecisionScore,
+      setupQualityScore: setupQuality.score,
+      setupQualityGrade: setupQuality.grade,
+      setupQualityBreakdown: setupQuality.breakdown,
+      entryReadinessScore: entryReadiness.score,
+      entryReadinessGrade: entryReadiness.grade,
+      entryReadinessBreakdown: entryReadiness.breakdown,
       tradeDecisionVerdict,
       tradeDecisionBlockers: blockers,
       riskRewardBand,
@@ -117,6 +144,78 @@ export class TradeDecisionService {
       extensionState,
       tradeDecisionAdjustments,
       finalRecommendation: this.resolveRecommendation(tradeDecisionVerdict, blockers)
+    };
+  }
+
+  private resolveSetupQuality(input: TradeDecisionInput): {
+    score: number;
+    grade: SetupQualityGrade;
+    breakdown: readonly ScoreComponentBreakdown[];
+  } {
+    const supportScore = this.supportSetupScore(input.supportDistancePercent, input.supportAlreadyBroken);
+    const mtfScore = this.multiTimeframeScore(input.higherTimeframeConfirmation);
+    const breakdown: ScoreComponentBreakdown[] = [
+      { label: 'Trend', score: roundTo(input.trendScore * SETUP_QUALITY_WEIGHTS.trend * 100 / 100, 2), max: 30 },
+      { label: 'Structure', score: roundTo(input.structureConfirmationScore * SETUP_QUALITY_WEIGHTS.structure * 100 / 100, 2), max: 30 },
+      { label: 'Market Quality', score: roundTo(input.marketQualityScore * SETUP_QUALITY_WEIGHTS.marketQuality * 100 / 100, 2), max: 20 },
+      { label: 'Support', score: roundTo(supportScore * SETUP_QUALITY_WEIGHTS.support * 100 / 100, 2), max: 10 },
+      { label: 'MTF', score: roundTo(mtfScore * SETUP_QUALITY_WEIGHTS.multiTimeframe * 100 / 100, 2), max: 10 }
+    ];
+
+    const score = roundTo(clamp(
+      input.trendScore * SETUP_QUALITY_WEIGHTS.trend +
+      input.structureConfirmationScore * SETUP_QUALITY_WEIGHTS.structure +
+      input.marketQualityScore * SETUP_QUALITY_WEIGHTS.marketQuality +
+      supportScore * SETUP_QUALITY_WEIGHTS.support +
+      mtfScore * SETUP_QUALITY_WEIGHTS.multiTimeframe,
+      0,
+      100
+    ), 2);
+
+    return {
+      score,
+      grade: this.resolveSetupGrade(score),
+      breakdown
+    };
+  }
+
+  private resolveEntryReadiness(input: TradeDecisionInput): {
+    score: number;
+    grade: EntryReadinessGrade;
+    breakdown: readonly ScoreComponentBreakdown[];
+  } {
+    const emaAlignmentScore = input.isBearishAlignment ? 100 : 35;
+    const retestScore = this.retestQualityScore(input.retestStatus, input.bearishRejectionAfterRetest);
+    const riskRewardScore = this.riskRewardReadinessScore(input.riskReward);
+    const momentumScore = this.momentumReadinessScore(input.trendStrengthScore);
+    const volumeScore = this.volumeReadinessScore(input.volumeQuality);
+
+    const score = roundTo(clamp(
+      input.entryScore * ENTRY_READINESS_WEIGHTS.entry +
+      input.pullbackQualityScore * ENTRY_READINESS_WEIGHTS.pullback +
+      emaAlignmentScore * ENTRY_READINESS_WEIGHTS.emaAlignment +
+      retestScore * ENTRY_READINESS_WEIGHTS.retestQuality +
+      riskRewardScore * ENTRY_READINESS_WEIGHTS.riskReward +
+      momentumScore * ENTRY_READINESS_WEIGHTS.momentum +
+      volumeScore * ENTRY_READINESS_WEIGHTS.volume,
+      0,
+      100
+    ), 2);
+
+    const breakdown: ScoreComponentBreakdown[] = [
+      { label: 'Entry Score', score: roundTo(input.entryScore * ENTRY_READINESS_WEIGHTS.entry * 100 / 100, 2), max: 30 },
+      { label: 'Pullback', score: roundTo(input.pullbackQualityScore * ENTRY_READINESS_WEIGHTS.pullback * 100 / 100, 2), max: 25 },
+      { label: 'EMA Alignment', score: roundTo(emaAlignmentScore * ENTRY_READINESS_WEIGHTS.emaAlignment * 100 / 100, 2), max: 15 },
+      { label: 'Retest', score: roundTo(retestScore * ENTRY_READINESS_WEIGHTS.retestQuality * 100 / 100, 2), max: 10 },
+      { label: 'RR', score: roundTo(riskRewardScore * ENTRY_READINESS_WEIGHTS.riskReward * 100 / 100, 2), max: 10 },
+      { label: 'Volume', score: roundTo(volumeScore * ENTRY_READINESS_WEIGHTS.volume * 100 / 100, 2), max: 5 },
+      { label: 'Momentum', score: roundTo(momentumScore * ENTRY_READINESS_WEIGHTS.momentum * 100 / 100, 2), max: 5 }
+    ];
+
+    return {
+      score,
+      grade: this.resolveEntryReadinessGrade(score),
+      breakdown
     };
   }
 
@@ -259,47 +358,54 @@ export class TradeDecisionService {
 
   private resolveDecisionExplanation(
     input: TradeDecisionInput,
-    componentScores: {
-      readonly trendScore: number;
-      readonly entryScore: number;
-      readonly multiTimeframeScore: number;
-      readonly marketQualityScore: number;
-      readonly riskRewardScore: number;
+    setupQuality: {
+      readonly score: number;
+      readonly grade: SetupQualityGrade;
+      readonly breakdown: readonly ScoreComponentBreakdown[];
+    },
+    entryReadiness: {
+      readonly score: number;
+      readonly grade: EntryReadinessGrade;
+      readonly breakdown: readonly ScoreComponentBreakdown[];
     },
     riskRewardBand: RiskRewardBand,
     blockers: readonly string[],
-    softPenalties: readonly TradeDecisionAdjustment[],
     tradeDecisionScore: number
   ): readonly TradeDecisionAdjustment[] {
     const items: TradeDecisionAdjustment[] = [
       {
-        label: 'Trend Score',
-        points: roundTo(componentScores.trendScore * TRADE_DECISION_WEIGHTS.trendScore, 2),
-        reason: `Trend score ${roundTo(componentScores.trendScore, 2)} contributes 40% of the final decision.`
+        label: 'Setup Quality',
+        points: setupQuality.score,
+        reason: `Setup quality is ${setupQuality.grade}.`
       },
       {
-        label: 'Entry',
-        points: roundTo(componentScores.entryScore * TRADE_DECISION_WEIGHTS.entryScore, 2),
-        reason: `Entry score ${roundTo(componentScores.entryScore, 2)} contributes 30% of the final decision.`
-      },
-      {
-        label: 'MTF',
-        points: roundTo(componentScores.multiTimeframeScore * TRADE_DECISION_WEIGHTS.multiTimeframe, 2),
-        reason: this.resolveMultiTimeframeReason(input.higherTimeframeConfirmation)
-      },
-      {
-        label: 'Market Quality',
-        points: roundTo(componentScores.marketQualityScore * TRADE_DECISION_WEIGHTS.marketQuality, 2),
-        reason: `Market quality is ${input.marketQuality}.`
-      },
-      {
-        label: 'Risk Reward',
-        points: roundTo(componentScores.riskRewardScore * TRADE_DECISION_WEIGHTS.riskReward, 2),
-        reason: `Risk/reward is classified as ${riskRewardBand}.`
+        label: 'Entry Readiness',
+        points: entryReadiness.score,
+        reason: `Entry readiness is ${entryReadiness.grade}.`
       }
     ];
 
-    items.push(...softPenalties);
+    for (const component of setupQuality.breakdown) {
+      items.push({
+        label: `Setup: ${component.label}`,
+        points: component.score,
+        reason: `${component.score.toFixed(2)}/${component.max}`
+      });
+    }
+
+    for (const component of entryReadiness.breakdown) {
+      items.push({
+        label: `Entry: ${component.label}`,
+        points: component.score,
+        reason: `${component.score.toFixed(2)}/${component.max}`
+      });
+    }
+
+    items.push({
+      label: 'Risk Reward Gate',
+      points: 0,
+      reason: `Risk/reward is classified as ${riskRewardBand} and enforced via hard blocker rules.`
+    });
 
     for (const blocker of blockers) {
       items.push({ label: 'Blocked because', points: 0, reason: blocker });
@@ -308,7 +414,7 @@ export class TradeDecisionService {
     items.push({
       label: 'TOTAL',
       points: tradeDecisionScore,
-      reason: 'Final calibrated decision score after weighted contributions and soft penalties.'
+      reason: 'Final decision score consolidated from Setup Quality and Entry Readiness.'
     });
 
     return items;
@@ -423,26 +529,6 @@ export class TradeDecisionService {
     return 'Not Extended';
   }
 
-  private riskRewardBandScore(band: RiskRewardBand): number {
-    if (band === 'Excellent') {
-      return 100;
-    }
-
-    if (band === 'Good') {
-      return 82;
-    }
-
-    if (band === 'Average') {
-      return 62;
-    }
-
-    if (band === 'Poor') {
-      return 30;
-    }
-
-    return 40;
-  }
-
   private multiTimeframeScore(confirmation: HigherTimeframeConfirmation): number {
     if (confirmation === 'Confirmed') {
       return 100;
@@ -455,24 +541,149 @@ export class TradeDecisionService {
     return 60;
   }
 
-  private resolveVerdictByScore(score: number): TradeDecisionVerdict {
-    if (score >= TRADE_DECISION_A_PLUS_MIN) {
+  private resolveVerdictByMatrix(setupQualityScore: number, entryReadinessScore: number): TradeDecisionVerdict {
+    if (setupQualityScore >= DECISION_MATRIX_A_PLUS_SETUP_MIN && entryReadinessScore >= DECISION_MATRIX_A_PLUS_ENTRY_MIN) {
       return 'A_PLUS_SETUP';
     }
 
-    if (score >= TRADE_DECISION_STRONG_MIN) {
+    if (setupQualityScore >= DECISION_MATRIX_STRONG_SETUP_MIN && entryReadinessScore >= DECISION_MATRIX_STRONG_ENTRY_MIN) {
       return 'STRONG_SETUP';
     }
 
-    if (score >= TRADE_DECISION_WATCH_MIN) {
+    if (setupQualityScore >= DECISION_MATRIX_WATCH_SETUP_MIN && entryReadinessScore >= DECISION_MATRIX_WATCH_ENTRY_MIN) {
       return 'WATCH';
     }
 
-    if (score >= TRADE_DECISION_WEAK_MIN) {
+    if (setupQualityScore >= DECISION_MATRIX_WEAK_SETUP_MIN && entryReadinessScore >= DECISION_MATRIX_WEAK_ENTRY_MIN) {
       return 'WEAK';
     }
 
     return 'AVOID';
+  }
+
+  private resolveSetupGrade(score: number): SetupQualityGrade {
+    if (score >= SETUP_QUALITY_EXCELLENT_MIN) {
+      return 'Excellent';
+    }
+
+    if (score >= SETUP_QUALITY_STRONG_MIN) {
+      return 'Strong';
+    }
+
+    if (score >= SETUP_QUALITY_GOOD_MIN) {
+      return 'Good';
+    }
+
+    if (score >= SETUP_QUALITY_AVERAGE_MIN) {
+      return 'Average';
+    }
+
+    return 'Poor';
+  }
+
+  private resolveEntryReadinessGrade(score: number): EntryReadinessGrade {
+    if (score >= ENTRY_READINESS_IDEAL_MIN) {
+      return 'Ideal';
+    }
+
+    if (score >= ENTRY_READINESS_READY_MIN) {
+      return 'Ready';
+    }
+
+    if (score >= ENTRY_READINESS_WATCH_MIN) {
+      return 'Watch';
+    }
+
+    if (score >= ENTRY_READINESS_DEVELOPING_MIN) {
+      return 'Developing';
+    }
+
+    return 'Ignore';
+  }
+
+  private supportSetupScore(supportDistancePercent: number | null, supportAlreadyBroken: boolean): number {
+    if (supportAlreadyBroken) {
+      return 90;
+    }
+
+    if (supportDistancePercent === null) {
+      return 60;
+    }
+
+    const distance = Math.abs(supportDistancePercent);
+    if (distance <= DECISION_MAJOR_SUPPORT_DISTANCE_PERCENT) {
+      return 25;
+    }
+
+    if (distance <= DECISION_NEAR_SUPPORT_DISTANCE_PERCENT) {
+      return 50;
+    }
+
+    if (distance <= 3) {
+      return 75;
+    }
+
+    return 92;
+  }
+
+  private retestQualityScore(retestStatus: RetestStatus, bearishRejectionAfterRetest: boolean): number {
+    if (bearishRejectionAfterRetest) {
+      return 95;
+    }
+
+    if (retestStatus === 'Retesting') {
+      return 70;
+    }
+
+    if (retestStatus === 'Broke then Retested') {
+      return 80;
+    }
+
+    if (retestStatus === 'Broke and Continued') {
+      return 45;
+    }
+
+    return 30;
+  }
+
+  private riskRewardReadinessScore(riskReward: number | null): number {
+    if (riskReward === null) {
+      return 35;
+    }
+
+    if (riskReward > 2.5) {
+      return 95;
+    }
+
+    if (riskReward >= 2) {
+      return 82;
+    }
+
+    if (riskReward >= 1.5) {
+      return 62;
+    }
+
+    return 25;
+  }
+
+  private momentumReadinessScore(trendStrengthScore: number): number {
+    return clamp(roundTo((trendStrengthScore / 10) * 100, 2), 0, 100);
+  }
+
+  private volumeReadinessScore(volumeQuality: VolumeQuality): number {
+    if (volumeQuality === 'Excellent') {
+      return 95;
+    }
+
+    if (volumeQuality === 'Good') {
+      return 80;
+    }
+
+    if (volumeQuality === 'Average') {
+      return 58;
+    }
+
+    return 35;
   }
 
   private resolveRecommendation(verdict: TradeDecisionVerdict, blockers: readonly string[]): string {

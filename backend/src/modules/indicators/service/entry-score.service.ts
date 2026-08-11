@@ -1,4 +1,5 @@
 import {
+  ENTRY_SUPPORT_RISK_PENALTY,
   ENTRY_QUALITY_RR_HIGH,
   ENTRY_QUALITY_RR_LOW,
   ENTRY_QUALITY_RR_MEDIUM,
@@ -15,9 +16,15 @@ export interface EntryScoreInput {
   readonly distanceFromEMA20Percent: number;
   readonly riskReward: number | null;
   readonly suggestedEntry: number | null;
+  readonly suggestedStopLoss: number | null;
   readonly suggestedTakeProfit: number | null;
   readonly price: number;
   readonly marketStructureEntryCap: number | null;
+  readonly pullbackQualityScore: number;
+  readonly hasRetest: boolean;
+  readonly bearishRejectionAfterRetest: boolean;
+  readonly supportDistancePercent: number | null;
+  readonly supportAlreadyBroken: boolean;
 }
 
 export interface EntryScoreResult {
@@ -38,10 +45,25 @@ export class EntryScoreService {
 
     score += this.stageContribution(input.tradeStage);
     score += this.distanceToEMA20Contribution(input.distanceFromEMA20Percent);
-    score += this.pullbackQualityContribution(input.tradeStage, input.distanceFromEMA20Percent);
+    score += this.pullbackQualityContribution(input.pullbackQualityScore);
     score += this.riskRewardContribution(input.riskReward);
     score += this.candleExtensionPenalty(input.distanceFromEMA20Percent);
     score += this.supportProximityContribution(input.suggestedEntry, input.suggestedTakeProfit, input.price);
+
+    if (!input.hasRetest) {
+      score -= 15;
+    }
+
+    if (input.hasRetest && !input.bearishRejectionAfterRetest) {
+      score -= 8;
+    }
+
+    score += this.supportRiskPenalty({
+      suggestedEntry: input.suggestedEntry,
+      suggestedStopLoss: input.suggestedStopLoss,
+      supportDistancePercent: input.supportDistancePercent,
+      supportAlreadyBroken: input.supportAlreadyBroken
+    });
 
     if (input.suggestedEntry === null) {
       score -= 25;
@@ -96,22 +118,20 @@ export class EntryScoreService {
     return 2;
   }
 
-  private pullbackQualityContribution(stage: TradeStage, distanceFromEMA20Percent: number): number {
-    const distance = Math.abs(distanceFromEMA20Percent);
-
-    if (stage === 'PULLBACK_ENTRY' && distance <= 0.8) {
-      return 14;
+  private pullbackQualityContribution(pullbackQualityScore: number): number {
+    if (pullbackQualityScore >= 80) {
+      return 22;
     }
 
-    if (stage === 'EARLY_BREAKDOWN' && distance <= 1.2) {
+    if (pullbackQualityScore >= 65) {
+      return 16;
+    }
+
+    if (pullbackQualityScore >= 45) {
       return 10;
     }
 
-    if (stage === 'TREND_CONTINUATION' && distance <= 1) {
-      return 8;
-    }
-
-    return 0;
+    return 2;
   }
 
   private riskRewardContribution(riskReward: number | null): number {
@@ -172,6 +192,39 @@ export class EntryScoreService {
     }
 
     return 2;
+  }
+
+  private supportRiskPenalty(input: {
+    readonly suggestedEntry: number | null;
+    readonly suggestedStopLoss: number | null;
+    readonly supportDistancePercent: number | null;
+    readonly supportAlreadyBroken: boolean;
+  }): number {
+    if (input.supportAlreadyBroken) {
+      return 0;
+    }
+
+    if (input.supportDistancePercent === null) {
+      return 0;
+    }
+
+    const supportRoomPercent = Math.abs(Math.min(0, input.supportDistancePercent));
+    if (supportRoomPercent === 0) {
+      return 0;
+    }
+
+    const oneRPercent =
+      input.suggestedEntry !== null &&
+      input.suggestedStopLoss !== null &&
+      input.suggestedEntry > 0
+        ? Math.abs(((input.suggestedStopLoss - input.suggestedEntry) / input.suggestedEntry) * 100)
+        : 1;
+
+    if (supportRoomPercent < oneRPercent) {
+      return -ENTRY_SUPPORT_RISK_PENALTY;
+    }
+
+    return 0;
   }
 
   private resolveGrade(score: number): EntryGrade {

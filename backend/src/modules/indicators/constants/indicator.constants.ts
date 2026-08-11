@@ -132,17 +132,55 @@ export const VERDICT_READY_ENTRY_MIN = 80;
 export const VERDICT_DEVELOPING_TREND_MIN = 70;
 
 export const TRADE_DECISION_WEIGHTS = {
-  trendScore: 0.4,
-  entryScore: 0.3,
-  multiTimeframe: 0.1,
+  trendScore: 0.3,
+  entryScore: 0.25,
+  structureConfirmation: 0.2,
+  pullbackQuality: 0.1,
+  multiTimeframe: 0.05,
   marketQuality: 0.1,
-  riskReward: 0.1
 } as const;
 
 export const TRADE_DECISION_A_PLUS_MIN = 95;
 export const TRADE_DECISION_STRONG_MIN = 85;
 export const TRADE_DECISION_WATCH_MIN = 70;
 export const TRADE_DECISION_WEAK_MIN = 55;
+
+export const SETUP_QUALITY_WEIGHTS = {
+  trend: 0.3,
+  structure: 0.3,
+  marketQuality: 0.2,
+  support: 0.1,
+  multiTimeframe: 0.1
+} as const;
+
+export const ENTRY_READINESS_WEIGHTS = {
+  entry: 0.3,
+  pullback: 0.25,
+  emaAlignment: 0.15,
+  retestQuality: 0.1,
+  riskReward: 0.1,
+  momentum: 0.05,
+  volume: 0.05
+} as const;
+
+export const SETUP_QUALITY_EXCELLENT_MIN = 90;
+export const SETUP_QUALITY_STRONG_MIN = 80;
+export const SETUP_QUALITY_GOOD_MIN = 60;
+export const SETUP_QUALITY_AVERAGE_MIN = 40;
+
+export const ENTRY_READINESS_IDEAL_MIN = 90;
+export const ENTRY_READINESS_READY_MIN = 80;
+export const ENTRY_READINESS_WATCH_MIN = 60;
+export const ENTRY_READINESS_DEVELOPING_MIN = 40;
+
+export const DECISION_MATRIX_A_PLUS_SETUP_MIN = 90;
+export const DECISION_MATRIX_A_PLUS_ENTRY_MIN = 90;
+export const DECISION_MATRIX_STRONG_SETUP_MIN = 85;
+export const DECISION_MATRIX_STRONG_ENTRY_MIN = 75;
+export const DECISION_MATRIX_WATCH_SETUP_MIN = 75;
+export const DECISION_MATRIX_WATCH_ENTRY_MIN = 60;
+export const DECISION_MATRIX_WEAK_SETUP_MIN = 65;
+export const DECISION_MATRIX_WEAK_ENTRY_MIN = 45;
 
 export const DECISION_TREND_MIN_STRENGTH = 6;
 export const DECISION_TREND_MAX_SIDEWAYS_SCORE = 55;
@@ -180,6 +218,22 @@ export const STRUCTURE_RECENT_BOS_CANDLES = 8;
 export const STRUCTURE_QUALITY_EXCELLENT_MIN = 8;
 export const STRUCTURE_QUALITY_GOOD_MIN = 6;
 export const STRUCTURE_CONFIDENCE_MAX = 100;
+
+export const STRUCTURE_CONFIRMATION_TRENDLINE_BREAK_POINTS = 15;
+export const STRUCTURE_CONFIRMATION_LAST_HL_BROKEN_POINTS = 30;
+export const STRUCTURE_CONFIRMATION_LOWER_HIGH_POINTS = 20;
+export const STRUCTURE_CONFIRMATION_PRICE_BELOW_EMA20_POINTS = 10;
+export const STRUCTURE_CONFIRMATION_EMA9_BELOW_EMA20_POINTS = 10;
+export const STRUCTURE_CONFIRMATION_EMA20_FALLING_POINTS = 10;
+export const STRUCTURE_CONFIRMATION_BEARISH_REJECTION_RETEST_POINTS = 5;
+export const STRUCTURE_CONFIRMATION_MAX_SCORE = 100;
+
+export const PULLBACK_QUALITY_MAX_SCORE = 100;
+export const PULLBACK_QUALITY_EXCELLENT_MIN = 80;
+export const PULLBACK_QUALITY_GOOD_MIN = 65;
+export const PULLBACK_QUALITY_AVERAGE_MIN = 45;
+
+export const ENTRY_SUPPORT_RISK_PENALTY = 25;
 
 export const SUPPORT_RESISTANCE_TOUCH_TOLERANCE_PERCENT = 0.28;
 export const SUPPORT_DISTANCE_NEAR_PERCENT = 1.2;

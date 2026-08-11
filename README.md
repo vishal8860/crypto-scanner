@@ -639,3 +639,48 @@ interface IndicatorResult {
 - Scanner Trade Analysis now shows Trend Quality label and score directly in Trend Score Breakdown.
 - Outcome:
   - clean staircase trends naturally rank above messy trends even when base EMA structure is similar.
+
+## Day 17: Structure Confirmation Engine (Eliminate Fake Trendline Breaks)
+
+- Replaced loose trendline-break interpretation with structure-first confirmation logic.
+- Added `Structure Confirmation Score` (`0-100`) to validate true bullish-to-bearish transition quality.
+- Added swing-sequence based structure phase classification:
+  - `Bullish`
+  - `Transition Bullish`
+  - `Range`
+  - `Transition Bearish`
+  - `Bearish`
+  - `Strong Bearish`
+- Tightened BOS behavior to require actual swing confirmation (break of prior higher low context) rather than line-only breaks.
+- Added retest + rejection awareness so entries stay constrained when confirmation is incomplete.
+- Added `Pullback Quality Score` (`0-100`) and integrated it into entry-quality scoring.
+- Added support-risk protection in entry scoring (penalty when downside room is below `1R`, unless support is already broken).
+- Updated decision weighting to include structure and pullback quality while preserving conservative hard blockers.
+- Added `Structure Score` visibility and explicit structure-reason bullets in scanner analysis.
+- Outcome:
+  - fewer fake-break bearish candidates are promoted; quality remains conservative with stronger structural confirmation.
+
+## Day 18: Scanner UX Consolidation (Two Primary Scores)
+
+- Consolidated scanner presentation into two primary scores:
+  - `Setup Quality` (`0-100`): "Is this market worth trading?"
+  - `Entry Readiness` (`0-100`): "Can I enter right now?"
+- Kept all internal engines and raw factors intact (Trend, Structure, Market Quality, Support, MTF, Entry, Pullback, RR, Volume, Momentum), but surfaced them through consolidated score breakdowns.
+- Simplified scanner table layout to:
+  - `Rank`
+  - `Symbol`
+  - `Structure`
+  - `Setup Quality`
+  - `Entry Readiness`
+  - `Decision`
+  - `Trade Stage`
+  - `Priority`
+- Updated default ranking order to:
+  - Setup Quality DESC
+  - Entry Readiness DESC
+  - Decision
+  - Symbol
+- Refactored decision verdict mapping to matrix logic based on the two consolidated scores while preserving hard blockers.
+- Trade Analysis now includes explicit Setup Quality and Entry Readiness component breakdown sections for easier interpretation.
+- Outcome:
+  - scanner reads like a product-first decision board while preserving full analytical depth under the hood.

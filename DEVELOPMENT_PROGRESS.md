@@ -2105,6 +2105,100 @@ Teach the scanner to separate visually clean trends from messy/choppy price acti
 
 The scanner now behaves closer to discretionary chart reading by promoting clean trend structure and downgrading choppy trend lookalikes.
 
+---
+
+## Day 17 - Structure Confirmation Engine (Eliminate Fake Trendline Breaks)
+
+### Objective
+
+Reduce fake bearish triggers by requiring true structure confirmation instead of line-only breakdown interpretation.
+
+### Core Enhancements
+
+- Added `Structure Confirmation Score` (`0-100`) to validate real bearish transition quality.
+- Added swing-based structure phase classification:
+	- `Bullish`
+	- `Transition Bullish`
+	- `Range`
+	- `Transition Bearish`
+	- `Bearish`
+	- `Strong Bearish`
+- Tightened BOS behavior to require genuine swing-structure confirmation.
+- Added retest + rejection awareness so entries remain constrained when confirmation is incomplete.
+- Added `Pullback Quality Score` (`0-100`) and wired it directly into Entry Score.
+- Added support-risk penalty guard when nearest support gives less than `1R` downside room (unless support already broke).
+- Updated decision weighting to account for structure and pullback quality while preserving conservative hard blockers.
+
+### Frontend Impact
+
+- Added `Structure Score` visibility in scanner table.
+- Trade Analysis now explains structure confirmation with check-by-check reasoning.
+
+### Validation
+
+- Backend build: passed
+- Frontend build: passed
+
+### Result
+
+Scanner now rejects more fake trendline breaks and promotes structurally confirmed bearish opportunities.
+
+---
+
+## Day 18 - Simplified Scanner UX (Two Primary Scores)
+
+### Objective
+
+Make scanner interpretation immediate by consolidating many visible scores into two product-facing scores without removing internal analytics.
+
+### Consolidation Layer
+
+- Added `Setup Quality` (`0-100`): market-worthiness score.
+- Added `Entry Readiness` (`0-100`): execution-readiness score.
+- Kept all internal score engines intact and used them as hidden contributors.
+
+### Decision Refactor
+
+- Final decision now follows a matrix driven by:
+	- Setup Quality
+	- Entry Readiness
+- Conservative blocker rules remain in place.
+
+### UI Refactor
+
+- Simplified table to:
+	- Rank
+	- Symbol
+	- Structure
+	- Setup Quality
+	- Entry Readiness
+	- Decision
+	- Trade Stage
+	- Priority
+- Trade Analysis now contains two explicit breakdown sections:
+	- Setup Quality components
+	- Entry Readiness components
+
+### Ranking
+
+- Default sorting now prioritizes:
+	- Setup Quality DESC
+	- Entry Readiness DESC
+	- Decision
+	- Symbol
+
+### Validation
+
+- Backend build: passed
+- Frontend build: passed
+
+### Result
+
+Scanner now feels product-grade: users can quickly answer
+1. Is this a quality setup?
+2. Is it ready right now?
+while preserving full technical depth in analysis.
+
 ## Version
 
-v0.16.0
+v0.18.0

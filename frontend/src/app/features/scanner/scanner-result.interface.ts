@@ -15,11 +15,15 @@ import {
   PriceActionSnapshot,
   ProfitTarget,
   PullbackQuality,
+  PullbackQualityLabel,
   RiskLevel,
   RiskRewardBand,
   RetestStatus,
+  ScoreComponentBreakdown,
+  SetupQualityGrade,
   StructureQualityLabel,
   StructureColumnState,
+  StructurePhase,
   StructureTrend,
   SupportColumnState,
   SupportResistanceStrength,
@@ -31,6 +35,7 @@ import {
   TradeVerdict,
   TradePriority,
   TradeStage,
+  EntryReadinessGrade,
   TrendGrade,
   Trend,
   TrendAge,
@@ -79,6 +84,9 @@ export interface ScannerResult {
   readonly trendScore: number;
   readonly trendQualityScore: number;
   readonly trendQualityLabel: TrendGrade;
+  readonly structureConfirmationScore: number;
+  readonly structurePhase: StructurePhase;
+  readonly structureConfirmationReasons: readonly string[];
   readonly professionalMarketStructure: MarketStructure;
   readonly professionalMarketStructureReason: readonly string[];
   readonly marketStructureWhySentence: string;
@@ -86,6 +94,8 @@ export interface ScannerResult {
   readonly trendGrade: TrendGrade;
   readonly entryScore: number;
   readonly entryGrade: EntryGrade;
+  readonly pullbackQualityScore: number;
+  readonly pullbackQualityLabel: PullbackQualityLabel;
   readonly tradeVerdict: TradeVerdict;
   readonly tradeDecisionScore: number;
   readonly tradeDecisionVerdict: TradeDecisionVerdict;
@@ -156,4 +166,10 @@ export interface ScannerResult {
   readonly sidewaysPenalty: number;
   readonly finalScore: number;
   readonly distanceEMA20: number;
+  readonly setupQualityScore: number;
+  readonly setupQualityGrade: SetupQualityGrade;
+  readonly setupQualityBreakdown: readonly ScoreComponentBreakdown[];
+  readonly entryReadinessScore: number;
+  readonly entryReadinessGrade: EntryReadinessGrade;
+  readonly entryReadinessBreakdown: readonly ScoreComponentBreakdown[];
 }

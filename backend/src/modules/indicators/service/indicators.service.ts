@@ -195,10 +195,15 @@ export class IndicatorsService {
       higherTimeframeConfirmedBearish: false
     });
     const marketStructureResult = this.marketStructureService.analyze({
+      opens,
       closes,
       highs,
       lows,
+      volumes,
       price,
+      ema9,
+      ema20,
+      ema20SlopePercent,
       trend
     });
     const supportResistanceResult = this.supportResistanceService.analyze({
@@ -312,9 +317,15 @@ export class IndicatorsService {
       distanceFromEMA20Percent,
       riskReward: plan.riskReward,
       suggestedEntry: plan.suggestedEntry,
+      suggestedStopLoss: plan.suggestedStopLoss,
       suggestedTakeProfit: plan.suggestedTakeProfit,
       price,
-      marketStructureEntryCap: professionalMarketStructure.entryScoreCap
+      marketStructureEntryCap: professionalMarketStructure.entryScoreCap,
+      pullbackQualityScore: marketStructureResult.pullbackQualityScore,
+      hasRetest: marketStructureResult.retestStatus === 'Retesting' || marketStructureResult.retestStatus === 'Broke then Retested',
+      bearishRejectionAfterRetest: marketStructureResult.bearishRejectionAfterRetest,
+      supportDistancePercent: supportResistanceResult.supportDistancePercent,
+      supportAlreadyBroken: marketStructureResult.lastHigherLowBroken
     });
     const baseSnapshot = {
       timeframe: query.interval,
@@ -371,8 +382,12 @@ export class IndicatorsService {
     const tradeDecisionResult = this.tradeDecisionService.assess({
       trendScore: trendScoreResult.trendScore,
       entryScore: entryScoreResult.entryScore,
+      structureConfirmationScore: marketStructureResult.structureConfirmationScore,
+      pullbackQualityScore: marketStructureResult.pullbackQualityScore,
       riskReward: plan.riskReward,
       volumeQuality: scoreResult.volumeQuality,
+      retestStatus: marketStructureResult.retestStatus,
+      bearishRejectionAfterRetest: marketStructureResult.bearishRejectionAfterRetest,
       tradeStage: tradeStageResult.tradeStage,
       distanceFromEMA20Percent,
       distanceFromEMA200Percent,
@@ -387,6 +402,7 @@ export class IndicatorsService {
       sidewaysScore: scoreResult.sidewaysScore,
       higherTimeframeConfirmation: multiTimeframeResult.higherTimeframeConfirmation,
       supportDistancePercent: supportResistanceResult.supportDistancePercent,
+      supportAlreadyBroken: marketStructureResult.lastHigherLowBroken,
       marketQuality: marketQualityResult.marketQuality,
       marketQualityScore: marketQualityResult.marketQualityScore
       ,marketCapUsd: query.marketCapUsd ?? null,
@@ -400,6 +416,10 @@ export class IndicatorsService {
       console.info('[calibration]', {
         symbol: query.symbol,
         trendScore: roundTo(trendScoreResult.trendScore, 2),
+        structureConfirmationScore: marketStructureResult.structureConfirmationScore,
+        pullbackQualityScore: marketStructureResult.pullbackQualityScore,
+        setupQualityScore: tradeDecisionResult.setupQualityScore,
+        entryReadinessScore: tradeDecisionResult.entryReadinessScore,
         trendQuality: {
           score: roundTo(scoreResult.trendQualityScore, 2),
           label: scoreResult.trendQualityLabel
@@ -464,6 +484,15 @@ export class IndicatorsService {
       trendScore: roundTo(trendScoreResult.trendScore, 2),
       trendQualityScore: roundTo(scoreResult.trendQualityScore, 2),
       trendQualityLabel: scoreResult.trendQualityLabel,
+      setupQualityScore: tradeDecisionResult.setupQualityScore,
+      setupQualityGrade: tradeDecisionResult.setupQualityGrade,
+      setupQualityBreakdown: tradeDecisionResult.setupQualityBreakdown,
+      entryReadinessScore: tradeDecisionResult.entryReadinessScore,
+      entryReadinessGrade: tradeDecisionResult.entryReadinessGrade,
+      entryReadinessBreakdown: tradeDecisionResult.entryReadinessBreakdown,
+      structureConfirmationScore: marketStructureResult.structureConfirmationScore,
+      structurePhase: marketStructureResult.structurePhase,
+      structureConfirmationReasons: marketStructureResult.structureConfirmationReasons,
       professionalMarketStructure: finalProfessionalMarketStructure.marketStructure,
       professionalMarketStructureReason: finalProfessionalMarketStructure.reason,
       marketStructureWhySentence: finalProfessionalMarketStructure.whySentence,
@@ -471,6 +500,8 @@ export class IndicatorsService {
       trendGrade: trendScoreResult.trendGrade,
       entryScore: roundTo(entryScoreResult.entryScore, 2),
       entryGrade: entryScoreResult.entryGrade,
+      pullbackQualityScore: marketStructureResult.pullbackQualityScore,
+      pullbackQualityLabel: marketStructureResult.pullbackQualityLabel,
       tradeVerdict,
       tradeDecisionScore: roundTo(tradeDecisionResult.tradeDecisionScore, 2),
       tradeDecisionVerdict: tradeDecisionResult.tradeDecisionVerdict,
