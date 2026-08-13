@@ -38,6 +38,25 @@
   flex-wrap: wrap;
 }
 
+.mode-selector {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+  padding: 0.65rem 0.85rem;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.mode-title {
+  margin: 0 0 0.35rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.mode-selector mat-radio-group {
+  display: flex;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+}
+
 .search-field {
   flex: 1 1 320px;
   min-width: 240px;

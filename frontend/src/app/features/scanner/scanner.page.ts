@@ -3,6 +3,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatRadioModule } from '@angular/material/radio';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { CandleInterval } from './candle.interface';
 import {
@@ -22,6 +23,7 @@ import { ScannerEngineService } from './scanner-engine.service';
 import { ScannerResult } from './scanner-result.interface';
 import { ScannerScoreBadgeComponent } from './components/scanner-score-badge.component';
 import { ChipTone, ScannerStatusChipComponent } from './components/scanner-status-chip.component';
+import { DEFAULT_SCANNER_MODE, DEFAULT_WATCHLIST_ID, ScannerMode, resolveWatchlist } from './watchlist';
 
 type ScoreTier = 'excellent' | 'good' | 'average' | 'ignore';
 type AlignmentState = 'bearish' | 'bullish' | 'mixed';
@@ -44,6 +46,7 @@ interface ChipConfig {
 		MatProgressSpinnerModule,
 		MatFormFieldModule,
 		MatInputModule,
+		MatRadioModule,
 		MatButtonModule,
 		ScannerScoreBadgeComponent,
 		ScannerStatusChipComponent
@@ -68,6 +71,9 @@ export class ScannerPageComponent implements OnInit {
 	protected readonly dataSource = new MatTableDataSource<ScannerResult>([]);
 	protected readonly selectedSymbol = signal<string | null>(null);
 	protected readonly selectedResult = signal<ScannerResult | null>(null);
+	protected readonly scannerMode = signal<ScannerMode>(DEFAULT_SCANNER_MODE);
+	protected readonly activeWatchlist = resolveWatchlist(DEFAULT_WATCHLIST_ID);
+	protected readonly watchlistCount = this.activeWatchlist.symbols.length;
 
 	protected readonly scanResults = computed(() => this.scannerEngineService.filteredResults());
 	protected readonly scanSummary = computed(() => this.scannerEngineService.summary());
@@ -75,6 +81,11 @@ export class ScannerPageComponent implements OnInit {
 	protected readonly scanning = computed(() => this.scannerEngineService.scanning());
 	protected readonly scanError = computed(() => this.scannerEngineService.error());
 	protected readonly scanProgress = computed(() => this.scannerEngineService.progress());
+	protected readonly scanningText = computed(() =>
+		this.scannerMode() === 'watchlist'
+			? `Scanning ${this.watchlistCount} favourite markets`
+			: `Scanning ${this.scanProgress()?.total ?? 0} markets`
+	);
 	protected readonly scoreLegend = [
 		'Setup Quality: Poor / Average / Good / Strong / Excellent',
 		'Entry Readiness: Ignore / Developing / Watch / Ready / Ideal',
@@ -113,7 +124,18 @@ export class ScannerPageComponent implements OnInit {
 	}
 
 	protected async scan(): Promise<void> {
-		await this.scannerEngineService.scan(this.inspectorInterval);
+		await this.scannerEngineService.scan(this.inspectorInterval, {
+			mode: this.scannerMode(),
+			watchlistSymbols: this.activeWatchlist.symbols
+		});
+	}
+
+	protected onScannerModeChange(mode: ScannerMode): void {
+		if (this.scannerMode() === mode) {
+			return;
+		}
+
+		this.scannerMode.set(mode);
 	}
 
 	protected isSelectedMarket(symbol: string): boolean {

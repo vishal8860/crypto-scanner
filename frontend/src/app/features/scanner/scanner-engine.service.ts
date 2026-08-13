@@ -7,10 +7,16 @@ import { IndicatorsService } from './indicators.service';
 import { Market } from './market.interface';
 import { MarketsService } from './markets.service';
 import { ScannerResult } from './scanner-result.interface';
+import { ScannerMode } from './watchlist';
 
 interface ScanProgress {
   readonly current: number;
   readonly total: number;
+}
+
+export interface ScanRequest {
+  readonly mode: ScannerMode;
+  readonly watchlistSymbols: readonly string[];
 }
 
 export interface ScanSummary {
@@ -180,6 +186,12 @@ const toScannerResult = (indicator: IndicatorResult): ScannerResult => ({
 const rankByScore = (results: readonly ScannerResult[]): readonly ScannerResult[] =>
   [...results]
     .sort((left, right) => {
+      const rightDecision = decisionRank(right.tradeDecisionVerdict);
+      const leftDecision = decisionRank(left.tradeDecisionVerdict);
+      if (rightDecision !== leftDecision) {
+        return rightDecision - leftDecision;
+      }
+
       if (right.setupQualityScore !== left.setupQualityScore) {
         return right.setupQualityScore - left.setupQualityScore;
       }
@@ -188,10 +200,8 @@ const rankByScore = (results: readonly ScannerResult[]): readonly ScannerResult[
         return right.entryReadinessScore - left.entryReadinessScore;
       }
 
-      const rightDecision = decisionRank(right.tradeDecisionVerdict);
-      const leftDecision = decisionRank(left.tradeDecisionVerdict);
-      if (rightDecision !== leftDecision) {
-        return rightDecision - leftDecision;
+      if (right.trendScore !== left.trendScore) {
+        return right.trendScore - left.trendScore;
       }
 
       return left.symbol.localeCompare(right.symbol);
@@ -252,7 +262,7 @@ export class ScannerEngineService {
     private readonly scannerSettingsService: ScannerSettingsService
   ) {}
 
-  public async scan(interval: CandleInterval): Promise<void> {
+  public async scan(interval: CandleInterval, request: ScanRequest): Promise<void> {
     if (this.scanningState()) {
       return;
     }
@@ -261,18 +271,39 @@ export class ScannerEngineService {
     this.errorState.set(null);
 
     try {
-      await this.marketsService.refresh();
+      const targetSymbols = request.mode === 'watchlist' ? request.watchlistSymbols : undefined;
+      await this.marketsService.refresh(targetSymbols);
 
       const marketsError = this.marketsService.error();
       if (marketsError) {
         throw new Error(marketsError);
       }
 
+      const requestedWatchlist = request.watchlistSymbols
+        .map((symbol) => symbol.trim().toUpperCase())
+        .filter((symbol) => symbol.length > 0);
+      const requestedSymbolSet = request.mode === 'watchlist' ? new Set(requestedWatchlist) : null;
+
       const activeMarkets = this.marketsService
         .markets()
-        .filter((market) => market.status.toLowerCase() === 'active');
+        .filter((market) => market.status.toLowerCase() === 'active')
+        .filter((market) => requestedSymbolSet === null || requestedSymbolSet.has(market.symbol.toUpperCase()));
 
-      const total = activeMarkets.length;
+      const marketsToScan = request.mode === 'watchlist'
+        ? requestedWatchlist.map((symbol) => {
+            const fromFeed = activeMarkets.find((market) => market.symbol.toUpperCase() === symbol);
+            return fromFeed ?? {
+              symbol,
+              lastPrice: null,
+              change24HourPercent: null,
+              volume: null,
+              marketCapUsd: null,
+              status: 'active'
+            };
+          })
+        : activeMarkets;
+
+      const total = marketsToScan.length;
       this.progressState.set({ current: 0, total });
 
       if (total === 0) {
@@ -294,8 +325,8 @@ export class ScannerEngineService {
       const scanned: ScannerResult[] = [];
       let completed = 0;
 
-      for (let start = 0; start < activeMarkets.length; start += SCAN_BATCH_SIZE) {
-        const batch = activeMarkets.slice(start, start + SCAN_BATCH_SIZE);
+      for (let start = 0; start < marketsToScan.length; start += SCAN_BATCH_SIZE) {
+        const batch = marketsToScan.slice(start, start + SCAN_BATCH_SIZE);
         const batchResults = await Promise.all(batch.map((market) => this.scanSingleMarket(market, interval)));
 
         for (const result of batchResults) {

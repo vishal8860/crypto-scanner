@@ -19,12 +19,16 @@ export class MarketsService {
 
   public constructor(private readonly http: HttpClient) {}
 
-  public async refresh(): Promise<void> {
+  public async refresh(symbols?: readonly string[]): Promise<void> {
     this.loadingState.set(true);
     this.errorState.set(null);
 
     try {
-      const response = await firstValueFrom(this.http.get<MarketsResponse>('/api/v1/markets'));
+      const uniqueSymbols = symbols && symbols.length > 0
+        ? [...new Set(symbols.map((symbol) => symbol.trim().toUpperCase()).filter((symbol) => symbol.length > 0))]
+        : [];
+      const symbolsQuery = uniqueSymbols.length > 0 ? `?symbols=${encodeURIComponent(uniqueSymbols.join(','))}` : '';
+      const response = await firstValueFrom(this.http.get<MarketsResponse>(`/api/v1/markets${symbolsQuery}`));
       this.marketsState.set(response.data);
     } catch (error) {
       this.errorState.set(this.resolveErrorMessage(error));

@@ -24,12 +24,19 @@ export class MarketsService {
 		private readonly assetMetadataService: AssetMetadataService = new AssetMetadataService()
 	) {}
 
-	public async list(): Promise<readonly MarketDto[]> {
+	public async list(symbols?: readonly string[]): Promise<readonly MarketDto[]> {
 		const [instruments, ticker] = await Promise.all([
 			this.coinDcxApiService.getActiveFuturesInstruments(),
 			this.coinDcxApiService.getTicker()
 		]);
-		const baseSymbols = instruments
+		const requestedSymbols = symbols && symbols.length > 0
+			? new Set(symbols.map((symbol) => symbol.trim().toUpperCase()).filter((symbol) => symbol.length > 0))
+			: null;
+		const filteredInstruments = requestedSymbols === null
+			? instruments
+			: instruments.filter((instrument) => requestedSymbols.has(pairToSymbol(instrument).toUpperCase()));
+
+		const baseSymbols = filteredInstruments
 			.map((instrument) => pairToSymbol(instrument))
 			.filter((symbol) => symbol.length > 4)
 			.map((symbol) => symbol.replace(/USDT$/i, '').replace(/INR$/i, ''));
@@ -39,7 +46,7 @@ export class MarketsService {
 		const uniqueSymbols = new Set<string>();
 		const markets: MarketDto[] = [];
 
-		for (const instrument of instruments) {
+		for (const instrument of filteredInstruments) {
 			const symbol = pairToSymbol(instrument);
 
 			if (!symbol || uniqueSymbols.has(symbol)) {

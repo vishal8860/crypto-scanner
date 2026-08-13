@@ -7,6 +7,13 @@
   </header>
 
   <div class="controls">
+    <div class="mode-selector" role="radiogroup" aria-label="Scanner mode">
+      <p class="mode-title">Scanner Mode</p>
+      <mat-radio-group [value]="scannerMode()" (change)="onScannerModeChange($event.value)">
+        <mat-radio-button value="all">All Markets</mat-radio-button>
+        <mat-radio-button value="watchlist">Watchlist ({{ watchlistCount }})</mat-radio-button>
+      </mat-radio-group>
+    </div>
     <mat-form-field appearance="outline" class="search-field">
       <mat-label>Search by symbol</mat-label>
       <input matInput [value]="searchTerm()" (input)="onSearch($event)" placeholder="e.g. BTCUSDT" />
@@ -36,7 +43,7 @@
   @if (scanning()) {
     <div class="state-box">
       <mat-spinner diameter="40" />
-      <p>Scanning markets...</p>
+      <p>{{ scanningText() }}</p>
       @if (scanProgress(); as progress) {
         <p>Current: {{ progress.current }} / {{ progress.total }}</p>
       }
